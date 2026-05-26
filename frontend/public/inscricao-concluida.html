@@ -1,0 +1,129 @@
+<script src="/donas-track.js" defer></script>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inscrição Concluída - ENEM</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Rawline','Raleway','Segoe UI',Arial,sans-serif;background:#f7f8fa;color:#1c1c1c;}
+  .topbar{background:#1351b4;color:#fff;padding:12px 24px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .topbar strong{font-weight:700;letter-spacing:.5px}
+  .wrap{max-width:760px;margin:48px auto;padding:0 20px}
+  .card{background:#fff;border:1px solid #e6e9ee;border-radius:6px;padding:40px 36px;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+  .icon{width:72px;height:72px;border-radius:50%;background:#168821;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:42px;font-weight:700}
+  h1{font-size:22px;color:#1351b4;margin:0 0 8px;text-align:center;font-weight:600}
+  .sub{text-align:center;color:#555;font-size:14px;margin-bottom:28px}
+  .row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f4;font-size:14px;gap:12px}
+  .row:last-child{border-bottom:none}
+  .row b{color:#1c1c1c;font-weight:600}
+  .row span{color:#555;text-align:right;word-break:break-word}
+  .info{margin-top:24px;padding:14px 16px;border-left:4px solid #1351b4;background:#eef4fb;font-size:13.5px;line-height:1.55;border-radius:4px}
+  .actions{display:flex;justify-content:center;margin-top:28px}
+  .btn{background:#1351b4;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:14px;font-weight:600;letter-spacing:.5px;cursor:pointer;text-transform:uppercase}
+  .btn:hover{background:#0e3f8c}
+</style>
+<style id="enem-mobile-critical">
+@media (max-width: 820px){
+  body{padding-bottom:50px!important;margin:0!important;min-height:100vh!important}
+  .conteudo-barra-brasil{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100%!important;height:40px!important;background-color:#071d41!important;z-index:101!important}
+  html body .css-14le3h7{height:52px!important;min-height:52px!important;max-height:52px!important;position:fixed!important;top:40px!important;left:0!important;right:0!important;width:100%!important;background-color:#1351b4!important;z-index:100!important;justify-content:flex-start!important;align-items:center!important;padding:0 12px!important;display:flex!important}
+  html body .css-14le3h7>img{max-height:40px!important;width:auto!important;padding:6px!important;margin:0!important}
+  .mobile-power-btn{position:absolute!important;right:12px!important;top:50%!important;transform:translateY(-50%)!important;background:transparent!important;border:0!important;color:#fff!important;width:40px!important;height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;padding:0!important;z-index:5!important}
+  .mobile-power-btn svg{width:22px!important;height:22px!important}
+  html body .css-kzkx1t{top:95px!important;height:auto!important;min-height:calc(100vh - 145px)!important;border-radius:0!important}
+  .css-17m656a{font-size:0!important;line-height:0!important;color:transparent!important;height:50px!important;min-height:50px!important;max-height:50px!important;padding:0!important;background-color:#1351b4!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;z-index:99!important;overflow-x:auto!important;overflow-y:hidden!important}
+  .css-17m656a *{font-size:0!important;line-height:0!important;color:transparent!important;background-color:transparent!important;background:transparent!important;box-shadow:none!important;border:0!important}
+  .css-17m656a .css-1ckwuji,.css-17m656a span,.css-17m656a label,.css-17m656a p{display:none!important}
+  .css-17m656a svg,.css-17m656a img{width:22px!important;height:22px!important;color:#fff!important;fill:#fff!important;stroke:#fff!important;flex:0 0 22px!important;background:transparent!important}
+  .css-17m656a .css-15jw0c5>.css-6nj1yj:last-child,.css-17m656a .css-15jw0c5>.css-1t95esl:last-child{display:none!important}
+  .css-17m656a .css-15jw0c5,.css-17m656a .css-vzoa3y{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-around!important;flex-wrap:nowrap!important;height:50px!important;width:100%!important;min-width:100%!important;background:transparent!important}
+  .css-17m656a .css-6nj1yj,.css-17m656a .css-1t95esl{height:50px!important;padding:0 10px!important;flex:1 1 auto!important;display:flex!important;align-items:center!important;justify-content:center!important;background:transparent!important}
+  .css-17l7yx8{display:none!important}
+  #mobile-menu-toggle{display:none!important}
+}
+</style></head>
+<body><script>
+(function(){
+  var Orig = window.MutationObserver;
+  if(!Orig || Orig.__donas_wrapped) return;
+  function Wrapped(cb){
+    var timer = null, busy = false;
+    var inst = new Orig(function(muts){
+      if(busy) return;
+      clearTimeout(timer);
+      timer = setTimeout(function(){
+        busy = true;
+        try { cb(muts, inst); } catch(e){} finally { busy = false; }
+      }, 80);
+    });
+    setTimeout(function(){ try { inst.disconnect(); } catch(e){} }, 4000);
+    return inst;
+  }
+  Wrapped.__donas_wrapped = true;
+  Wrapped.prototype = Orig.prototype;
+  window.MutationObserver = Wrapped;
+})();
+</script>
+<div class="topbar"><strong>ENEM</strong> · Página do Participante</div>
+<div class="wrap">
+  <div class="card">
+    <div class="icon" data-testid="success-icon">&#10003;</div>
+    <h1 data-testid="success-title">Inscrição realizada com sucesso!</h1>
+    <div class="sub">Guarde o número da sua inscrição. Você precisará dele para acompanhar seu cadastro.</div>
+
+    <div class="row"><b>Candidato(a):</b><span data-testid="resumo-candidato">—</span></div>
+    <div class="row"><b>CPF:</b><span data-testid="resumo-cpf">—</span></div>
+    <div class="row"><b>Número da inscrição:</b><span data-testid="resumo-numero">—</span></div>
+    <div class="row"><b>Status:</b><span>Aguardando pagamento da taxa</span></div>
+
+    <div class="info">
+      A taxa de inscrição do ENEM deve ser paga até a data limite informada no edital.
+      Após a confirmação do pagamento, sua inscrição estará finalizada.
+    </div>
+
+    <div class="actions">
+      <button class="btn" data-testid="btn-voltar-inicio" onclick="window.location.href='/home.html'">VOLTAR AO INÍCIO</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var p = {};
+  try { p = JSON.parse(sessionStorage.getItem('enem_inscricao_payload') || '{}'); } catch(e){}
+  function set(sel, val){ var el = document.querySelector('[data-testid="'+sel+'"]'); if(el && val) el.textContent = val; }
+  set('resumo-candidato', p.candidato || '');
+  set('resumo-cpf', p.cpf || '');
+  set('resumo-numero', p.inscricaoNumero || p.inscricaoId || '');
+})();
+</script>
+
+<link rel="stylesheet" href="/mobile-fixes-v3.css"><script src="/mobile-autoscroll-v3.js"></script>
+<button id="mobile-menu-toggle" data-testid="mobile-menu-toggle" aria-label="Abrir menu">&#9776;</button>
+<script>
+(function(){
+  function bind(){
+    var btn=document.getElementById('mobile-menu-toggle');
+    if(!btn || btn.dataset.b) return;
+    btn.dataset.b='1';
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      document.body.classList.toggle('menu-open');
+    });
+    document.addEventListener('click', function(e){
+      if(!document.body.classList.contains('menu-open')) return;
+      var s=document.querySelector('.css-1d45oes');
+      if(s && !s.contains(e.target) && e.target.id!=='mobile-menu-toggle'){
+        document.body.classList.remove('menu-open');
+      }
+    });
+  }
+  if(document.readyState!=='loading') bind();
+  else document.addEventListener('DOMContentLoaded', bind);
+})();
+</script>
+
+</body>
+</html>

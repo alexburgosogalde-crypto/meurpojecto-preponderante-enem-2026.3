@@ -1,0 +1,436 @@
+/* MOBILE_V4 - Compact mobile layout shared across ENEM funnel pages */
+@media (max-width: 820px){
+  html, body{ overflow-x: hidden !important; }
+
+  /* GOV.BR top strip - fixed at the very top with solid dark navy background */
+  .conteudo-barra-brasil{
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    width: 100% !important;
+    height: 40px !important;
+    background-color: #071d41 !important;
+    z-index: 101 !important;
+  }
+
+  /* INEP enem header - fixed below GOV.BR strip, solid blue.
+     Original: logo on LEFT, power (logout) icon on RIGHT. */
+  .css-14le3h7{
+    height: 52px !important; min-height:52px !important;
+    position: fixed !important;
+    top: 40px !important; left: 0 !important; right: 0 !important;
+    width: 100% !important;
+    background-color: #1351b4 !important;
+    z-index: 100 !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 0 12px !important;
+  }
+  .css-14le3h7 > img{
+    padding: 6px !important;
+    max-height: 40px !important;
+    width: auto !important;
+    margin: 0 !important;
+    align-self: center !important;
+  }
+  /* Injected power (logout) button in header, top-right */
+  .mobile-power-btn{
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: transparent !important;
+    border: 0 !important;
+    color: #fff !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 5 !important;
+  }
+  .mobile-power-btn svg{ width: 22px !important; height: 22px !important; }
+
+  /* Bottom progress bar (etapas concluídas) - KEEP VISIBLE but compact.
+     This is the barra de progresso with green check icons in the original.
+     Fixed to bottom of viewport, horizontal scroll if many steps. */
+  .css-17m656a{
+    padding: 0 !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    background-color: #1351b4 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 99 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    box-sizing: border-box !important;
+  }
+  .css-17m656a .css-15jw0c5,
+  .css-17m656a .css-vzoa3y{
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    width: auto !important;
+    min-width: 100% !important;
+  }
+  /* AGGRESSIVE: hide every text node label inside progress bar.
+     Original ENEM mobile shows ONLY icons.
+     font-size:0 on the row kills any plain text node; svg/img reset to 22px below. */
+  .css-17m656a,
+  .css-17m656a *{
+    font-size: 0 !important;
+    line-height: 0 !important;
+    color: transparent !important;
+  }
+  .css-17m656a .css-1ckwuji,
+  .css-17m656a span,
+  .css-17m656a label,
+  .css-17m656a p{
+    display: none !important;
+  }
+  /* Hide the SAIR (logout) item — power já está no header */
+  .css-17m656a .css-15jw0c5 > .css-6nj1yj:last-child,
+  .css-17m656a .css-15jw0c5 > .css-1t95esl:last-child{
+    display: none !important;
+  }
+  .css-17m656a [data-hidden-sair="1"]{ display: none !important; }
+  .css-17m656a .css-6nj1yj,
+  .css-17m656a .css-1t95esl{
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    padding: 0 10px !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .css-17m656a svg,
+  .css-17m656a img{
+    width: 22px !important;
+    height: 22px !important;
+    margin: 0 !important;
+    flex: 0 0 22px !important;
+  }
+  /* Push page bottom content above the fixed bar */
+  body{ padding-bottom: 50px !important; }
+
+  /* Hide hamburger menu toggle (não existe no original ENEM mobile) */
+  #mobile-menu-toggle{ display: none !important; }
+
+  /* Hide BLUE SIDEBAR */
+  .css-1d45oes{ display:none !important; }
+
+  /* The white card: full screen, starts below both fixed headers (40 + 52 = 92px) */
+  .css-kzkx1t{
+    position:absolute !important;
+    top: 95px !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: calc(100vh - 95px) !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .css-80tl13{ overflow: visible !important; min-height: 100vh !important; }
+  .css-1c88qfb{ overflow: visible !important; min-height: calc(100vh - 95px) !important; width:100% !important; flex:1 1 100% !important; max-width:100% !important; padding: 4px 6px !important; }
+
+  /* Helo avatar: smaller and compact (multiple variants used across pages) */
+  .css-s7wlwf,
+  .css-4q2774,
+  .css-v9u0jw,
+  .css-y0fpqq,
+  .css-1meb55q,
+  .css-1xx3nlo,
+  .css-hx52a5,
+  .css-smxyoi{
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    flex: 0 0 44px !important;
+    border-width: 2px !important;
+  }
+  .css-s7wlwf > *, .css-s7wlwf div, .css-s7wlwf img,
+  .css-4q2774 > *, .css-4q2774 div, .css-4q2774 img,
+  .css-v9u0jw > *, .css-v9u0jw div, .css-v9u0jw img,
+  .css-y0fpqq > *, .css-y0fpqq div, .css-y0fpqq img,
+  .css-1meb55q > *, .css-1meb55q div, .css-1meb55q img,
+  .css-1xx3nlo > *, .css-1xx3nlo div, .css-1xx3nlo img,
+  .css-hx52a5 > *, .css-hx52a5 div, .css-hx52a5 img,
+  .css-smxyoi > *, .css-smxyoi div, .css-smxyoi img{
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+  /* CATCH-ALL: any image inside chat bubble container gets capped */
+  .css-1x880er img,
+  .css-uiqgnq img,
+  .css-uiqgnq > div > img,
+  .css-uiqgnq picture img{
+    max-width: 44px !important;
+    max-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    object-fit: contain !important;
+  }
+  /* Larger avatar variants used in captcha/intro screens */
+  [class*="css-"][style*="border-radius: 50%"]{
+    max-width: 56px !important;
+    max-height: 56px !important;
+  }
+
+  /* Chat bubble row spacing */
+  .css-uiqgnq{ padding: 2px 4px !important; gap: 6px !important; align-items: flex-start !important; }
+  .css-1x880er{ padding: 2px 0 !important; }
+  /* Chat bubble inner: tighter padding, smaller text */
+  .css-3o2vej{ padding: 6px 10px !important; font-size: 13px !important; line-height: 1.35 !important; max-width: calc(100vw - 70px) !important; }
+  .css-3o2vej p, .css-3o2vej span{ font-size: 13px !important; line-height: 1.35 !important; }
+  .css-3o2vej p{ margin: 2px 0 !important; }
+  /* Any button inside a chat bubble must not overflow */
+  .css-3o2vej button,
+  .css-3o2vej a{
+    max-width: 100% !important;
+    white-space: normal !important;
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Captcha image option buttons (Lupa, Gato, Lápis, etc): make compact */
+  .css-176w0hu{
+    gap: 4px !important;
+    padding: 4px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    max-width: 100% !important;
+  }
+  .css-x59uo5,
+  .css-1ottlnu{
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px !important;
+    min-height: 56px !important;
+    max-width: 56px !important;
+    max-height: 56px !important;
+    padding: 4px !important;
+    margin: 2px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  .css-x59uo5 img,
+  .css-1ottlnu img,
+  .css-176w0hu img,
+  .css-176w0hu picture img{
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+  /* Captcha audio/refresh round buttons */
+  .css-197nm1a{
+    gap: 8px !important;
+    padding: 4px !important;
+    justify-content: center !important;
+  }
+  .css-197nm1a > *,
+  .css-197nm1a button{
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    padding: 0 !important;
+  }
+  .css-197nm1a svg, .css-197nm1a img{
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .css-10nvitp{
+    gap: 6px !important;
+    padding: 4px !important;
+  }
+  .css-10nvitp > *{
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    padding: 0 !important;
+  }
+  .css-10nvitp svg, .css-10nvitp img{
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .css-wbgyl1{ overflow: visible !important; min-height: auto !important; padding: 0 !important; }
+  .css-1pojmvr{ width:100% !important; }
+
+  /* Fix text justification creating huge word gaps */
+  .css-1c88qfb p, .css-1c88qfb span, .css-1c88qfb div,
+  .css-wbgyl1 p, .css-wbgyl1 span, .css-wbgyl1 div,
+  .css-1gic6yg p, .css-1gic6yg span {
+    text-align: left !important;
+    text-align-last: left !important;
+    word-spacing: normal !important;
+    hyphens: none !important;
+  }
+
+  /* Chat bubbles: tighter padding, smaller font */
+  .css-1gic6yg{ padding: 0 4px !important; }
+  .css-1gic6yg > div, .css-1ih1zar{ margin: 4px 0 !important; }
+  .css-1gic6yg p { font-size: 13.5px !important; line-height: 1.35 !important; margin: 2px 0 !important; }
+
+  /* Compact avatar (helo) */
+  .css-1meb55q{
+    width: 54px !important; height: 54px !important;
+    min-width: 54px !important; min-height: 54px !important;
+    border-width: 2px !important;
+  }
+  .css-1meb55q > div{ width:100% !important; height:100% !important; }
+  .css-1x880er{ margin: 0 6px 0 0 !important; }
+
+  /* PRÓXIMO / SAIR buttons compact */
+  .css-1qjumrt{ font-size: 12px !important; padding: 7px 12px !important; min-width: 96px !important; }
+  .css-7gevgu, .css-176w0hu{ gap: 8px !important; margin: 6px 0 !important; }
+
+  /* Footer strip (Nome / CPF / version) */
+  .css-uiqgnq{ padding: 4px 8px !important; font-size: 11px !important; margin: 4px 0 !important; flex-wrap: wrap !important; }
+  .css-uiqgnq > *{ font-size: 11px !important; }
+
+  /* Bottom tab bar (Início / Dados Pessoais / Sair) prevent overlap */
+  .css-10nvitp{
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    padding: 4px 0 !important;
+    gap: 0 !important;
+  }
+  .css-10nvitp > *{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    text-align: center !important;
+    font-size: 11px !important;
+    padding: 4px 2px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .css-10nvitp svg, .css-10nvitp img{ width: 20px !important; height: 20px !important; margin: 0 0 2px 0 !important; }
+  .css-17l7yx8{ margin: 2px !important; font-size: 11px !important; }
+
+  /* Bottom input row (CPF / nome / DOB) */
+  .css-1qh4aj3{
+    position: sticky !important; bottom: 6px !important;
+    margin: 10px 8px !important; background:#fff !important;
+    z-index: 50;
+    padding: 4px 6px !important;
+    border-radius: 28px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+  }
+  /* Input wrapper grows to fill */
+  .css-1qh4aj3 .css-b7azs1,
+  .css-1qh4aj3 > div:has(input){
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .css-15nda4v{
+    font-size: 16px !important;
+    min-height: 40px !important;
+    padding: 6px 12px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Send button: small circle on the RIGHT */
+  .css-1qh4aj3 > button,
+  .css-1qh4aj3 button[type="button"],
+  .css-1qh4aj3 [role="button"]{
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    flex: 0 0 40px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    margin-left: auto !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  .css-1qh4aj3 > button svg,
+  .css-1qh4aj3 button[type="button"] svg,
+  .css-1qh4aj3 [role="button"] svg{
+    width: 20px !important;
+    height: 20px !important;
+    margin: 0 !important;
+  }
+
+  /* Bottom tab bar - already hidden globally above with display:none.
+     (No labels/icons need styling since the whole bar is gone.) */
+
+  /* Drawer state: show sidebar as overlay */
+  body.menu-open .css-1d45oes{
+    display:flex !important;
+    position:fixed !important; top:0; left:0; bottom:0;
+    width:80% !important; max-width:320px;
+    z-index:9998;
+    overflow-y:auto;
+    box-shadow:2px 0 12px rgba(0,0,0,.35);
+  }
+  body.menu-open::after{
+    content:''; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9997;
+  }
+
+  /* Hamburger toggle - FORCE HIDDEN (not part of original ENEM mobile) */
+  #mobile-menu-toggle{ display: none !important; }
+  body.menu-open .css-1d45oes{ display: none !important; }
+  body.menu-open::after{ display: none !important; }
+}
+@media (min-width: 821px){ #mobile-menu-toggle{ display:none !important; } }
+#mobile-menu-toggle{
+  display:none; position:absolute; top:64px; left:10px; z-index:10000;
+  width:38px; height:38px; border-radius:4px;
+  background:transparent; color:#fff; border:0; cursor:pointer;
+  align-items:center; justify-content:center; font-size:24px; line-height:1; padding:0;
+}

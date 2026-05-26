@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donas — Painel Administrativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/qrcode.min.js"></script>
+<script src="/donas-api.js" defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#0b0d20; --card:#11142e; --card2:#1a1d3e;
+    --sidebar:#1a1240; --sidebar-hover:#2a1d5f; --sidebar-active:#3b2a7f;
+    --text:#f1f5f9; --muted:#94a3b8; --muted-2:#64748b;
+    --purple:#7c3aed; --purple-2:#a78bfa; --purple-3:#c4b5fd;
+    --indigo:#6366f1; --blue:#3b82f6; --green:#10b981;
+    --orange:#f59e0b; --pink:#ec4899; --red:#ef4444;
+    --bg-light:#f3f4ff;
+  }
+  html,body{height:100%;font-family:'Inter',system-ui,sans-serif;color:var(--text);background:var(--bg);}
+  button{font-family:inherit;cursor:pointer;border:0;}
+  a{color:inherit;text-decoration:none;}
+  input{font-family:inherit;}
+  .hide{display:none !important;}
+
+  /* ============ LOGIN ============ */
+  #loginView{position:fixed;inset:0;display:flex;background:#000;overflow:hidden;}
+  #loginView .left{flex:1;position:relative;background:#0a0a0a;}
+  #loginView .left img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;filter:brightness(.95);}
+  #loginView .left::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.4) 50%, #0b0d20 100%);}
+  #loginView .left .badge-restrito{position:absolute;bottom:80px;left:48px;display:flex;align-items:center;gap:10px;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.4);padding:8px 16px;border-radius:30px;font-size:11px;font-weight:700;letter-spacing:1px;z-index:2;color:#c4b5fd;}
+  #loginView .left .badge-restrito::before{content:"";width:7px;height:7px;background:#c4b5fd;border-radius:50%;animation:pulse 1.5s infinite;}
+  #loginView .left .quote{position:absolute;bottom:30px;left:48px;font-style:italic;color:#9ca3af;font-size:13px;max-width:420px;line-height:1.5;z-index:2;}
+  #loginView .left .quote .hl{color:#a78bfa;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  #loginView .right{width:480px;background:#0d1031;display:flex;align-items:center;justify-content:center;padding:48px 56px;position:relative;z-index:1;}
+  #loginCard{width:100%;max-width:380px;background:#13163a;border:1px solid #252859;border-radius:22px;padding:40px 32px;}
+  .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+  .login-brand .mark{width:44px;height:44px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:11px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;}
+  .login-brand .nm{font-weight:700;font-size:16px;line-height:1.1;}
+  .login-brand .nm small{display:block;font-size:10px;color:var(--muted-2);font-weight:600;letter-spacing:1.5px;margin-top:3px;}
+  #loginCard h1{font-size:26px;font-weight:700;margin-bottom:6px;}
+  #loginCard p.sub{color:var(--muted);font-size:13px;margin-bottom:24px;}
+  .input-group{margin-bottom:16px;}
+  .input-group label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;display:block;}
+  .input-wrap{position:relative;}
+  .input-group input{width:100%;background:#fff;color:#0f172a;border:0;padding:14px 16px;border-radius:12px;font-size:14px;font-weight:500;outline:none;}
+  .input-group input:focus{box-shadow:0 0 0 3px rgba(124,58,237,.35);}
+  .toggle-pwd{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;color:#64748b;display:flex;}
+  .btn-entrar{width:100%;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;padding:14px;border-radius:12px;font-weight:700;font-size:15px;margin-top:8px;transition:opacity .15s;}
+  .btn-entrar:hover{opacity:.92;}
+  .login-footer-note{color:var(--muted-2);font-size:11px;margin-top:18px;display:flex;align-items:center;gap:8px;}
+  #loginError{display:none;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#fca5a5;padding:10px 12px;border-radius:8px;font-size:12px;margin-top:10px;}
+  #loginError.show{display:block;}
+
+  /* ============ APP (Dashboard) ============ */
+  #appView{display:flex;min-height:100vh;background:#f3f4ff;color:#0f172a;}
+  #appView aside{width:260px;background:linear-gradient(180deg,#1a1240 0%,#13103a 100%);color:#fff;padding:24px 18px;display:flex;flex-direction:column;flex-shrink:0;position:relative;transition:width .3s ease, padding .3s ease;}
+  /* Sidebar colapsado */
+  #appView aside.collapsed{width:76px;padding:24px 12px;}
+  #appView aside.collapsed .side-brand .nm,
+  #appView aside.collapsed .side-nav a span.lbl,
+  #appView aside.collapsed .side-user .lbl,
+  #appView aside.collapsed .btn-sair span.lbl{display:none;}
+  #appView aside.collapsed .side-nav a{justify-content:center;padding:13px 0;}
+  #appView aside.collapsed .side-user{justify-content:center;padding:10px;}
+  #appView aside.collapsed .btn-sair{padding:13px 0;justify-content:center;}
+  #appView aside.collapsed .side-brand{justify-content:center;padding:0;}
+  #appView aside.collapsed .nav-collapse-btn svg{transform:rotate(180deg);}
+  .side-brand{display:flex;align-items:center;gap:12px;margin-bottom:32px;padding:0 6px;}
+  .side-brand .mark{width:44px;height:44px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;}
+  .side-brand .nm{font-weight:700;font-size:15px;line-height:1.1;}
+  .side-brand .nm small{display:block;font-size:9px;font-weight:600;color:#a78bfa;letter-spacing:1.5px;margin-top:3px;}
+
+  .nav-collapse-btn{position:absolute;right:-12px;top:34px;width:26px;height:26px;background:#fff;color:#7c3aed;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:10;cursor:pointer;border:1px solid #e5e7eb;}
+  .nav-collapse-btn svg{width:14px;height:14px;transition:transform .3s ease;}
+  .nav-collapse-btn:hover{background:#f8fafc;}
+
+  .side-nav{display:flex;flex-direction:column;gap:4px;flex:1;}
+  .side-nav a{display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:10px;color:#c7c4ee;font-weight:500;font-size:14px;transition:background .15s, color .15s;}
+  .side-nav a:hover{background:rgba(255,255,255,.04);color:#fff;}
+  .side-nav a.active{background:linear-gradient(90deg,#6d28d9 0%,#5b21b6 100%);color:#fff;font-weight:600;box-shadow:0 4px 12px rgba(109,40,217,.4);}
+  .side-nav svg{width:18px;height:18px;flex-shrink:0;}
+
+  .side-user{margin-top:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;}
+  .side-user .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0;}
+  .side-user .lbl{font-size:13px;font-weight:600;line-height:1.2;}
+  .side-user .lbl small{display:block;font-size:11px;color:#a78bfa;font-weight:500;margin-top:2px;}
+  .btn-sair{margin-top:10px;background:rgba(255,255,255,.05);color:#c7c4ee;padding:13px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.06);transition:background .15s;}
+  .btn-sair:hover{background:rgba(255,255,255,.1);color:#fff;}
+
+  main{flex:1;padding:32px 36px;overflow-x:hidden;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:16px;}
+  .page-head h1{font-size:30px;font-weight:800;color:#0f172a;line-height:1.1;}
+  .page-head .sub{color:#64748b;font-size:14px;margin-top:6px;}
+  .page-head .actions{display:flex;gap:10px;}
+  .page-head .actions button{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;background:#fff;border:1px solid #e5e7eb;color:#475569;transition:background .15s;}
+  .page-head .actions button:hover{background:#f8fafc;}
+  .page-head .actions .danger{color:#dc2626;border-color:#fecaca;}
+  .page-head .actions .danger:hover{background:#fef2f2;}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:28px;}
+  .kpi{background:#fff;border-radius:14px;padding:20px;border-bottom:4px solid var(--c);box-shadow:0 1px 3px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s, box-shadow .15s;}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.06);}
+  .kpi .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .kpi .lbl{font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;}
+  .kpi .ico{width:36px;height:36px;border-radius:10px;background:var(--icobg);color:var(--c);display:flex;align-items:center;justify-content:center;}
+  .kpi .ico svg{width:18px;height:18px;}
+  .kpi .num{font-size:26px;font-weight:800;color:#0f172a;line-height:1.1;}
+  .kpi .ft{margin-top:14px;padding-top:10px;border-top:1px dashed #e5e7eb;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;}
+  .kpi.purple{--c:#7c3aed;--icobg:#ede9fe;}
+  .kpi.blue{--c:#3b82f6;--icobg:#dbeafe;}
+  .kpi.green{--c:#10b981;--icobg:#d1fae5;}
+  .kpi.orange{--c:#f59e0b;--icobg:#fef3c7;}
+  .kpi.pink{--c:#ec4899;--icobg:#fce7f3;}
+
+  /* Two columns layout */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+  .panel{background:#fff;border-radius:14px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .panel h3{font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px;}
+  .panel .ph-sub{color:#94a3b8;font-size:12px;margin-bottom:18px;}
+  .panel .head-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+
+  /* Funil */
+  /* ===== Funil moderno (Donut + métricas) ===== */
+  .funil-modern{margin-top:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:stretch;}
+  @media (max-width:1100px){.funil-modern{grid-template-columns:1fr;}}
+  .funil-svg-wrap{position:relative;background:linear-gradient(180deg,#fafbff,#f4f4ff);border:1px solid #ece7ff;border-radius:14px;padding:18px;min-height:360px;display:flex;align-items:center;justify-content:center;}
+  .funil-donut-box{position:relative;width:100%;max-width:340px;aspect-ratio:1;}
+  .funil-donut-box canvas{width:100% !important;height:100% !important;}
+  .funil-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;}
+  .funil-donut-center .big{font-size:34px;font-weight:800;color:#0f172a;line-height:1;font-variant-numeric:tabular-nums;background:linear-gradient(135deg,#7c3aed,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .funil-donut-center .lbl{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1.2px;margin-top:6px;}
+  .funil-donut-center .sub{font-size:12px;color:#475569;margin-top:4px;font-weight:500;}
+  .funil-metrics{display:flex;flex-direction:column;gap:10px;}
+  .funil-metric{background:#fff;border:1px solid #eef0f4;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
+  .funil-metric:hover{transform:translateY(-2px);box-shadow:0 8px 24px -10px rgba(15,23,42,.18);}
+  .funil-metric::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--metric-color,#7c3aed);}
+  .funil-metric .ico-step{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--metric-bg,#ede9fe);color:var(--metric-color,#7c3aed);flex-shrink:0;}
+  .funil-metric .ico-step svg{width:18px;height:18px;}
+  .funil-metric .body{flex:1;min-width:0;}
+  .funil-metric .title-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .funil-metric .title-row .lbl{font-size:12.5px;color:#475569;font-weight:600;letter-spacing:.2px;}
+  .funil-metric .title-row .val{font-size:18px;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;}
+  .funil-metric .conv{display:flex;align-items:center;gap:8px;margin-top:4px;}
+  .funil-metric .conv .chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.2px;}
+  .funil-metric .conv .chip.up{background:#dcfce7;color:#15803d;}
+  .funil-metric .conv .chip.warn{background:#fef3c7;color:#a16207;}
+  .funil-metric .conv .chip.down{background:#fee2e2;color:#b91c1c;}
+  .funil-metric .conv .chip.neutral{background:#e2e8f0;color:#475569;}
+  .funil-metric .conv .drop{font-size:11px;color:#94a3b8;font-weight:500;}
+  .funil-resumo{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:10px;margin-top:6px;}
+  .funil-resumo .resumo-it{flex:1;text-align:center;}
+  .funil-resumo .resumo-it .v{font-size:18px;font-weight:800;color:#5b21b6;font-variant-numeric:tabular-nums;line-height:1;}
+  .funil-resumo .resumo-it .l{font-size:10.5px;color:#6d28d9;font-weight:600;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;}
+  .funil-resumo .resumo-sep{width:1px;background:#c4b5fd;}
+
+  /* Top localizações */
+  .loc-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #f1f5f9;}
+  .loc-row:last-child{border-bottom:0;}
+  .loc-row .pin{font-size:18px;color:#ef4444;flex-shrink:0;}
+  .loc-row .info{flex:1;min-width:0;}
+  .loc-row .info .city{font-size:14px;font-weight:600;color:#0f172a;}
+  .loc-row .info .uf{font-size:12px;color:#94a3b8;}
+  .loc-row .bar-wrap{width:120px;height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;flex-shrink:0;}
+  .loc-row .bar-wrap .bar{height:100%;background:#7c3aed;border-radius:99px;transition:width .6s ease;}
+  .loc-row .cnt{font-weight:700;color:#0f172a;font-size:14px;min-width:32px;text-align:right;}
+
+  /* Atividade últimos 7 dias / em tempo real */
+  #chartAtividade{width:100% !important;height:280px !important;}
+  .live-badge{display:inline-flex;align-items:center;gap:6px;background:#fee2e2;color:#dc2626;padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;}
+  .live-badge::before{content:"";width:7px;height:7px;background:#dc2626;border-radius:50%;animation:pulse 1.2s infinite;}
+  .ev-list{max-height:280px;overflow-y:auto;padding-right:6px;}
+  .ev{display:flex;gap:12px;padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;}
+  .ev .ico{width:36px;height:36px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ev .ico svg{width:18px;height:18px;}
+  .ev .ct{flex:1;min-width:0;}
+  .ev .ct .tit{font-weight:700;color:#0f172a;font-size:13px;}
+  .ev .ct .desc{color:#64748b;font-size:12px;margin-top:3px;line-height:1.4;}
+  .ev .time{color:#94a3b8;font-size:11px;flex-shrink:0;}
+
+  /* Modal acessos */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal-box{background:#fff;width:100%;max-width:880px;max-height:88vh;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+  .modal-head{padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;}
+  .modal-head h3{font-size:18px;font-weight:700;color:#0f172a;}
+  .modal-head .sub{font-size:13px;color:#94a3b8;margin-top:3px;}
+  .modal-close{font-size:24px;color:#64748b;background:none;}
+  .modal-body{padding:18px 24px;overflow-y:auto;flex:1;}
+  .modal-body input.search{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:14px;outline:none;margin-bottom:14px;}
+  .modal-body input.search:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.15);}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px;}
+  .tbl thead{background:#f8fafc;}
+  .tbl th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;border-bottom:1px solid #e5e7eb;}
+  .tbl td{padding:14px;border-bottom:1px solid #f1f5f9;color:#1f2937;}
+  .tbl td a{color:#3b82f6;font-weight:500;}
+  .tbl .badge{background:#dbeafe;color:#3b82f6;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.5px;}
+  .tbl .badge.purple{background:#ede9fe;color:#6d28d9;}
+  .tbl .right{text-align:right;}
+
+  /* Em breve placeholder */
+  .em-breve{background:#fff;border-radius:14px;padding:60px 32px;text-align:center;color:#94a3b8;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .em-breve h2{color:#0f172a;font-size:22px;font-weight:700;margin-bottom:8px;}
+  .em-breve p{font-size:14px;}
+
+  /* Telegram toggle */
+  input[type=checkbox]:checked + .tg-slider{background:#10b981;}
+  input[type=checkbox]:checked ~ .tg-knob{transform:translateX(22px);}
+
+  /* Scrollbars dark */
+  .ev-list::-webkit-scrollbar,.modal-body::-webkit-scrollbar{width:6px;}
+  .ev-list::-webkit-scrollbar-thumb,.modal-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px;}
+
+  /* Responsive */
+  @media (max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr);} .grid-2{grid-template-columns:1fr;}}
+  @media (max-width:780px){
+    #loginView .left{display:none;}
+    #loginView .right{width:100%;}
+    #appView aside{display:none;}
+    main{padding:20px;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .page-head h1{font-size:24px;}
+  }
+</style>
+<style id="enem-mobile-critical">
+@media (max-width: 820px){
+  body{padding-bottom:50px!important;margin:0!important;min-height:100vh!important}
+  .conteudo-barra-brasil{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100%!important;height:40px!important;background-color:#071d41!important;z-index:101!important}
+  html body .css-14le3h7{height:52px!important;min-height:52px!important;max-height:52px!important;position:fixed!important;top:40px!important;left:0!important;right:0!important;width:100%!important;background-color:#1351b4!important;z-index:100!important;justify-content:flex-start!important;align-items:center!important;padding:0 12px!important;display:flex!important}
+  html body .css-14le3h7>img{max-height:40px!important;width:auto!important;padding:6px!important;margin:0!important}
+  .mobile-power-btn{position:absolute!important;right:12px!important;top:50%!important;transform:translateY(-50%)!important;background:transparent!important;border:0!important;color:#fff!important;width:40px!important;height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;padding:0!important;z-index:5!important}
+  .mobile-power-btn svg{width:22px!important;height:22px!important}
+  html body .css-kzkx1t{top:95px!important;height:auto!important;min-height:calc(100vh - 145px)!important;border-radius:0!important}
+  .css-17m656a{font-size:0!important;line-height:0!important;color:transparent!important;height:50px!important;min-height:50px!important;max-height:50px!important;padding:0!important;background-color:#1351b4!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;z-index:99!important;overflow-x:auto!important;overflow-y:hidden!important}
+  .css-17m656a *{font-size:0!important;line-height:0!important;color:transparent!important;background-color:transparent!important;background:transparent!important;box-shadow:none!important;border:0!important}
+  .css-17m656a .css-1ckwuji,.css-17m656a span,.css-17m656a label,.css-17m656a p{display:none!important}
+  .css-17m656a svg,.css-17m656a img{width:22px!important;height:22px!important;color:#fff!important;fill:#fff!important;stroke:#fff!important;flex:0 0 22px!important;background:transparent!important}
+  .css-17m656a .css-15jw0c5>.css-6nj1yj:last-child,.css-17m656a .css-15jw0c5>.css-1t95esl:last-child{display:none!important}
+  .css-17m656a .css-15jw0c5,.css-17m656a .css-vzoa3y{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-around!important;flex-wrap:nowrap!important;height:50px!important;width:100%!important;min-width:100%!important;background:transparent!important}
+  .css-17m656a .css-6nj1yj,.css-17m656a .css-1t95esl{height:50px!important;padding:0 10px!important;flex:1 1 auto!important;display:flex!important;align-items:center!important;justify-content:center!important;background:transparent!important}
+  .css-17l7yx8{display:none!important}
+  #mobile-menu-toggle{display:none!important}
+}
+</style></head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginView">
+  <div class="left">
+    <img src="/donatelo.jpg" alt="Donatello">
+    <div class="badge-restrito">ACESSO RESTRITO</div>
+    <div class="quote"><em>O conhecimento é como uma escada: quanto mais alto você sobe, mais <span class="hl">ampla é sua visão</span>.</em></div>
+  </div>
+  <div class="right">
+    <div id="loginCard">
+      <div class="login-brand">
+        <div class="mark">D</div>
+        <div class="nm">Donas<small>PAINEL ADMINISTRATIVO</small></div>
+      </div>
+      <h1>Acessar painel</h1>
+      <p class="sub">Digite suas credenciais para continuar.</p>
+      <form id="formLogin" autocomplete="off">
+        <div class="input-group">
+          <label for="loginUser">USUÁRIO</label>
+          <div class="input-wrap">
+            <input id="loginUser" type="text" autocomplete="off" data-testid="login-user" required>
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="loginPwd">SENHA</label>
+          <div class="input-wrap">
+            <input id="loginPwd" type="password" autocomplete="off" data-testid="login-pwd" required>
+            <button type="button" class="toggle-pwd" id="togglePwd" aria-label="Mostrar senha">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-entrar" data-testid="login-submit">Entrar →</button>
+        <div id="loginError">Usuário ou senha inválidos.</div>
+        <div class="login-footer-note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Conexão segura · Apenas administradores autorizados.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP / DASHBOARD ===================== -->
+<div id="appView" class="hide">
+  <aside id="sidebar">
+    <button class="nav-collapse-btn" id="btnCollapse" aria-label="Retrair menu" data-testid="btn-collapse">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="side-brand">
+      <div class="mark">D</div>
+      <div class="nm">Donas<small>PAINEL</small></div>
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <a href="#dashboard" class="active" data-tab="dashboard" data-testid="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span class="lbl">Dashboard</span>
+      </a>
+      <a href="#inscricoes" data-tab="inscricoes" data-testid="nav-inscricoes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span class="lbl">Inscrições</span>
+      </a>
+      <a href="#cadastro" data-tab="cadastro" data-testid="nav-cadastro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="lbl">Cadastro</span>
+      </a>
+      <a href="#usuarios" data-tab="usuarios" data-testid="nav-usuarios">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span class="lbl">Usuários</span>
+      </a>
+      <a href="#config" data-tab="config" data-testid="nav-config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="lbl">Configurações</span>
+      </a>
+    </nav>
+    <div class="side-user">
+      <div class="av">D</div>
+      <div class="lbl">donas (root)<small>Administrador</small></div>
+    </div>
+    <button class="btn-sair" id="btnSair" data-testid="btn-sair"><span class="lbl">→ Sair</span><svg style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+  </aside>
+
+  <main>
+    <!-- TAB: DASHBOARD -->
+    <section id="tab-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="sub">Visão geral em tempo real do ENEM 2026.</div>
+        </div>
+        <div class="actions">
+          <button class="danger" id="btnZerar" data-testid="btn-zerar">🗑️ Zerar KPIs</button>
+          <button id="btnAtualizar" data-testid="btn-atualizar">↻ Atualizar</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi purple" data-testid="kpi-acessos" onclick="openModalAcessos()">
+          <div class="head"><span class="lbl">ACESSOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+          <div class="num" id="kpiAcessos">0</div>
+          <div class="ft"><span>Visitas registradas</span><span>→</span></div>
+        </div>
+        <div class="kpi blue" data-testid="kpi-inscricoes">
+          <div class="head"><span class="lbl">TOTAL DE INSCRIÇÕES</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span></div>
+          <div class="num" id="kpiInscricoes">0</div>
+          <div class="ft"><span>Candidatos cadastrados</span></div>
+        </div>
+        <div class="kpi green" data-testid="kpi-valor">
+          <div class="head"><span class="lbl">VALOR TOTAL GERADO</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></div>
+          <div class="num" id="kpiValor">R$ 0,00</div>
+          <div class="ft"><span id="kpiValorSub">0 PIX gerado(s)</span></div>
+        </div>
+        <div class="kpi orange" data-testid="kpi-copiados">
+          <div class="head"><span class="lbl">PIX COPIADOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span></div>
+          <div class="num" id="kpiCopiadosValor">R$ 0,00</div>
+          <div class="ft"><span id="kpiCopiadosSub">0 pix copiados</span></div>
+        </div>
+        <div class="kpi pink" data-testid="kpi-baixados">
+          <div class="head"><span class="lbl">PIX BAIXADOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span></div>
+          <div class="num" id="kpiBaixadosValor">R$ 0,00</div>
+          <div class="ft"><span id="kpiBaixadosSub">0 comprovantes baixados</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Funil de conversão</h3>
+          <div class="ph-sub">Distribuição das etapas — passe o mouse sobre cada fatia</div>
+          <div id="funilWrap" class="funil-modern"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Top localizações</h3>
+          <div class="ph-sub">De onde vêm os visitantes</div>
+          <div id="locList"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="head-row"><div><h3>Atividade dos últimos 7 dias</h3><div class="ph-sub">Acessos × Inscrições por dia</div></div></div>
+          <canvas id="chartAtividade"></canvas>
+        </div>
+        <div class="panel">
+          <div class="head-row"><div><h3>Atividade em tempo real</h3><div class="ph-sub">Últimos eventos no portal</div></div><div class="live-badge">AO VIVO</div></div>
+          <div class="ev-list" id="evList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: INSCRIÇÕES -->
+    <section id="tab-inscricoes" class="hide">
+      <div class="page-head">
+        <div>
+          <h1>Inscrições</h1>
+          <div class="sub">Candidatos que efetivaram uma inscrição em algum concurso.</div>
+        </div>
+        <div class="actions">
+          <button id="btnBaixarDados" data-testid="btn-baixar-dados" style="color:#1d4ed8;border-color:#bfdbfe;">↓ Baixar dados</button>
+          <button class="danger" id="btnLimparInsc" data-testid="btn-limpar-inscricoes">🗑️ Limpar inscrições</button>
+          <button id="btnAtualizarInsc" data-testid="btn-atualizar-insc">↻ Atualizar</button>
+        </div>
+      </div>
+
+      <!-- Mesmos 5 KPIs (compartilhados visualmente) -->
+      <div class="kpis">
+        <div class="kpi purple"><div class="head"><span class="lbl">ACESSOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></div><div class="num" id="kpiAcessos2">0</div><div class="ft"><span>Visitas registradas</span></div></div>
+        <div class="kpi blue"><div class="head"><span class="lbl">TOTAL DE INSCRIÇÕES</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span></div><div class="num" id="kpiInscricoes2">0</div><div class="ft"><span>Candidatos cadastrados</span></div></div>
+        <div class="kpi green"><div class="head"><span class="lbl">VALOR TOTAL GERADO</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></div><div class="num" id="kpiValor2">R$ 0,00</div><div class="ft"><span id="kpiValorSub2">0 PIX gerado(s)</span></div></div>
+        <div class="kpi orange"><div class="head"><span class="lbl">PIX COPIADOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span></div><div class="num" id="kpiCop2">R$ 0,00</div><div class="ft"><span id="kpiCopSub2">0 pix copiados</span></div></div>
+        <div class="kpi pink"><div class="head"><span class="lbl">PIX BAIXADOS</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span></div><div class="num" id="kpiBai2">R$ 0,00</div><div class="ft"><span id="kpiBaiSub2">0 comprovantes baixados</span></div></div>
+      </div>
+
+      <!-- Busca + filtro de status -->
+      <div class="panel" style="padding:18px 22px;">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="inscSearch" placeholder="Buscar por nome, CPF, e-mail, cidade ou nº de referência..." data-testid="insc-search"
+                 style="flex:1;min-width:300px;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:14px;outline:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;">STATUS:</label>
+            <select id="inscStatus" data-testid="insc-status" style="border:1px solid #e5e7eb;border-radius:10px;padding:11px 14px;font-size:14px;outline:none;background:#fff;min-width:220px;">
+              <option value="">Todos os status</option>
+              <option value="Aguardando pagamento">Aguardando pagamento</option>
+              <option value="PIX gerado">PIX gerado</option>
+              <option value="PIX copiado">PIX copiado</option>
+              <option value="PIX baixado">PIX baixado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tabela -->
+        <table class="tbl" style="margin-top:20px;">
+          <thead>
+            <tr><th>CANDIDATO</th><th>CPF</th><th>DISPOSITIVO</th><th>VALOR</th><th>STATUS</th><th>INSCRIÇÃO EM</th><th class="right">AÇÕES</th></tr>
+          </thead>
+          <tbody id="inscBody"></tbody>
+        </table>
+        <div id="inscEmpty" class="hide" style="text-align:center;padding:40px;color:#94a3b8;">Nenhuma inscrição encontrada.</div>
+      </div>
+    </section>
+
+    <!-- Modal Detalhes do Candidato -->
+    <div class="modal-bg" id="modalDetalhes" data-testid="modal-detalhes">
+      <div class="modal-box" style="max-width:680px;">
+        <div class="modal-head">
+          <h3>Detalhes do candidato</h3>
+          <button class="modal-close" id="closeDetalhes">×</button>
+        </div>
+        <div class="modal-body" id="detalhesBody"></div>
+      </div>
+    </div>
+    <!-- TAB: CADASTRO -->
+    <section id="tab-cadastro" class="hide">
+      <div class="page-head">
+        <div>
+          <h1>Cadastro</h1>
+          <div class="sub">Todos os candidatos que criaram conta no portal.</div>
+        </div>
+        <div class="actions">
+          <button id="btnBaixarCad" data-testid="btn-baixar-cad" style="color:#1d4ed8;border-color:#bfdbfe;">↓ Baixar dados</button>
+          <button class="danger" id="btnLimparCad" data-testid="btn-limpar-cad">🗑️ Limpar cadastros</button>
+          <button id="btnAtualizarCad" data-testid="btn-atualizar-cad">↻ Atualizar</button>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:18px 22px;">
+        <div style="display:flex;gap:14px;align-items:center;">
+          <input type="text" id="cadSearch" placeholder="Buscar por nome, CPF ou e-mail..." data-testid="cad-search"
+                 style="flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:14px;outline:none;">
+          <div style="color:#94a3b8;font-size:13px;font-weight:500;white-space:nowrap;"><span id="cadCount">0</span> resultado(s)</div>
+        </div>
+
+        <table class="tbl" style="margin-top:20px;">
+          <thead>
+            <tr><th>NOME</th><th>CPF</th><th>E-MAIL</th><th>SENHA</th><th>CRIADO EM</th><th class="right">AÇÕES</th></tr>
+          </thead>
+          <tbody id="cadBody"></tbody>
+        </table>
+        <div id="cadEmpty" class="hide" style="text-align:center;padding:40px;color:#94a3b8;">Nenhum cadastro encontrado.</div>
+      </div>
+    </section>
+    <!-- TAB: USUÁRIOS -->
+    <section id="tab-usuarios" class="hide">
+      <div class="page-head">
+        <div>
+          <h1>Usuários</h1>
+          <div class="sub">Administradores com acesso ao painel.</div>
+        </div>
+      </div>
+
+      <div class="kpis" style="grid-template-columns:1fr;">
+        <div class="kpi purple" style="cursor:default;">
+          <div class="head"><span class="lbl">ADMINISTRADORES</span><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></div>
+          <div class="num" id="kpiAdmins">1</div>
+          <div class="ft"><span>com acesso ao painel</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+          <h3 style="font-size:17px;font-weight:700;color:#0f172a;">Lista de administradores</h3>
+          <button id="btnNovoAdmin" data-testid="btn-novo-admin" style="background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px;">+ Novo administrador</button>
+        </div>
+
+        <table class="tbl">
+          <thead><tr><th>USUÁRIO</th><th>PAPEL</th><th>CRIADO EM</th><th class="right">AÇÕES</th></tr></thead>
+          <tbody id="adminBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Modal Novo administrador -->
+    <div class="modal-bg" id="modalNovoAdmin" data-testid="modal-novo-admin">
+      <div class="modal-box" style="max-width:440px;">
+        <div class="modal-head">
+          <h3>Novo administrador</h3>
+          <button class="modal-close" id="closeNovoAdmin">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="formNovoAdmin">
+            <div style="margin-bottom:14px;">
+              <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:6px;">USUÁRIO</label>
+              <input id="newAdminUser" type="text" data-testid="new-admin-user" required autocomplete="off"
+                     style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:14px;outline:none;">
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:6px;">SENHA</label>
+              <input id="newAdminPwd" type="password" data-testid="new-admin-pwd" required autocomplete="new-password"
+                     style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:14px;outline:none;">
+            </div>
+            <div style="margin-bottom:18px;">
+              <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:6px;">CONFIRMAR SENHA</label>
+              <input id="newAdminPwd2" type="password" data-testid="new-admin-pwd2" required autocomplete="new-password"
+                     style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:14px;outline:none;">
+            </div>
+            <div id="novoAdminErr" style="display:none;background:#fee2e2;color:#b91c1c;padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;font-weight:500;"></div>
+            <button type="submit" data-testid="submit-novo-admin"
+                    style="width:100%;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;padding:13px;border-radius:10px;font-weight:700;font-size:14px;">Criar administrador</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- TAB: CONFIGURAÇÕES -->
+    <section id="tab-config" class="hide">
+      <div class="page-head">
+        <div>
+          <h1>Configurações</h1>
+          <div class="sub">Configure a chave PIX e as notificações do Telegram.</div>
+        </div>
+      </div>
+
+      <!-- Bloco Chave PIX -->
+      <div class="panel" style="margin-bottom:20px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:48px;height:48px;border-radius:10px;background:#dcfce7;color:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size:18px;font-weight:700;color:#0f172a;">Chave PIX</h3>
+            <div style="color:#64748b;font-size:13px;margin-top:4px;">Cadastre a chave PIX que vai receber os pagamentos das inscrições.</div>
+            <div style="color:#64748b;font-size:13px;">Aceita CPF, CNPJ, e-mail, telefone ou chave aleatória.</div>
+          </div>
+        </div>
+        <div style="margin-top:22px;">
+          <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:7px;">CHAVE PIX <span style="color:#dc2626;">*</span></label>
+          <input type="text" id="cfgPixKey" data-testid="cfg-pix-key" placeholder="ex.: 94aee74a-2aa2-4261-9953-35678418c044"
+                 style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:14px;outline:none;font-family:ui-monospace,Menlo,Consolas,monospace;">
+          <div style="margin-top:14px;display:flex;gap:14px;">
+            <input type="text" id="cfgPixNome" data-testid="cfg-pix-nome" placeholder="Nome do recebedor"
+                   style="flex:2;border:1px solid #e5e7eb;border-radius:10px;padding:11px 14px;font-size:13px;outline:none;">
+            <input type="text" id="cfgPixCidade" data-testid="cfg-pix-cidade" placeholder="Cidade (ex.: RIO DE JANEIRO)"
+                   style="flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:11px 14px;font-size:13px;outline:none;">
+          </div>
+        </div>
+        <div style="margin-top:18px;text-align:right;">
+          <button id="btnSalvarPix" data-testid="btn-salvar-pix" style="background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;">Salvar chave PIX</button>
+        </div>
+      </div>
+
+      <!-- Bloco Telegram -->
+      <div class="panel">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:48px;height:48px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 4.5L2.5 12l5 1.5L17 6 9 14l-.5 5L12 16l5 4 4.5-15.5z"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size:18px;font-weight:700;color:#0f172a;">Notificações Telegram</h3>
+            <div style="color:#64748b;font-size:13px;margin-top:4px;line-height:1.5;">Receba uma mensagem no seu bot/grupo do Telegram sempre que uma nova inscrição for criada.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:7px;">BOT TOKEN <span style="color:#dc2626;">*</span></label>
+          <input type="text" id="cfgTgToken" data-testid="cfg-tg-token" placeholder="ex.: 8766120852:AAF9NYCW8oFGNhKdFaO9Nob-..."
+                 style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:13px;outline:none;font-family:ui-monospace,Menlo,Consolas,monospace;">
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;display:block;margin-bottom:7px;">CHAT ID (GRUPO OU USUÁRIO) <span style="color:#dc2626;">*</span></label>
+          <input type="text" id="cfgTgChatId" data-testid="cfg-tg-chatid" placeholder="ex.: -1003742872851"
+                 style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:13px 16px;font-size:13px;outline:none;font-family:ui-monospace,Menlo,Consolas,monospace;">
+        </div>
+
+        <div style="margin-top:22px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;margin-bottom:10px;">STATUS DAS NOTIFICAÇÕES</div>
+          <label style="display:inline-flex;align-items:center;gap:14px;cursor:pointer;">
+            <span style="position:relative;display:inline-block;width:50px;height:28px;">
+              <input type="checkbox" id="cfgTgAtivo" data-testid="cfg-tg-ativo" style="opacity:0;width:0;height:0;" checked>
+              <span class="tg-slider" style="position:absolute;inset:0;background:#cbd5e1;border-radius:99px;transition:.2s;"></span>
+              <span class="tg-knob" style="position:absolute;left:3px;top:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+            </span>
+            <span id="cfgTgAtivoLbl" style="font-size:12px;font-weight:700;letter-spacing:.8px;color:#16a34a;">ATIVO — VOCÊ RECEBERÁ NOTIFICAÇÃO A CADA NOVA INSCRIÇÃO</span>
+          </label>
+        </div>
+
+        <!-- Bloco de instruções -->
+        <div style="margin-top:22px;background:#eff6ff;border:1px solid #dbeafe;border-radius:10px;padding:18px 22px;color:#1e3a8a;line-height:1.7;font-size:13px;">
+          <div style="font-weight:800;color:#7c3aed;margin-bottom:6px;">📌 Como obter Bot Token e Chat ID?</div>
+          <div>Crie um bot conversando com <code style="background:rgba(124,58,237,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#7c3aed;">@BotFather</code> no Telegram (comando <code style="background:rgba(124,58,237,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#7c3aed;">/newbot</code>) — ele te dará o <strong>Bot Token</strong>.</div>
+          <div>Adicione o bot ao seu <strong>grupo</strong> e envie qualquer mensagem.</div>
+          <div>Acesse <code style="background:rgba(124,58,237,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#7c3aed;">https://api.telegram.org/bot&lt;SEU_TOKEN&gt;/getUpdates</code> no navegador.</div>
+          <div>Copie o valor de <code style="background:rgba(124,58,237,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#7c3aed;">chat.id</code> (grupos começam com sinal de menos, ex.: <code style="background:rgba(124,58,237,.1);padding:2px 6px;border-radius:4px;font-size:12px;color:#7c3aed;">-100...</code>).</div>
+          <div>Cole os valores acima e clique em <strong>Salvar</strong>.</div>
+        </div>
+
+        <div style="margin-top:18px;text-align:right;display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btnTestarTg" data-testid="btn-testar-tg" style="background:#fff;border:1px solid #d1fae5;color:#16a34a;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;">↗ Testar envio</button>
+          <button id="btnSalvarTg" data-testid="btn-salvar-tg" style="background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;">Salvar Telegram</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal Acessos -->
+<div class="modal-bg" id="modalAcessos" data-testid="modal-acessos">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div><h3>Acessos ao site</h3><div class="sub" id="modalAcessosSub">0 visitas registradas</div></div>
+      <button class="modal-close" id="closeModalAcessos">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="search" id="searchAcessos" placeholder="Buscar por IP, cidade, UF ou dispositivo...">
+      <table class="tbl">
+        <thead><tr><th>DATA / HORA</th><th>IP</th><th>LOCALIZAÇÃO</th><th>DISPOSITIVO</th><th class="right">ACESSOS</th></tr></thead>
+        <tbody id="tbAcessos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ AUTENTICAÇÃO ============ */
+const ADMIN_USER = 'donas';
+const ADMIN_PWD = 'Seinao10@@';
+
+// Lista de admins criados no painel (além do root). Estrutura: [{user, pwd, createdAt}]
+function getAdmins(){
+  const list = (() => { try { return JSON.parse(localStorage.getItem('donasAdmins')||'[]') || []; } catch(_e){ return []; }})();
+  // Garante que o root sempre existe na lista (não é removível)
+  if (!list.some(a => a.user === ADMIN_USER)){
+    list.unshift({ user: ADMIN_USER, pwd: ADMIN_PWD, createdAt: '2026-05-20T00:31:00.000Z', root: true });
+    try { localStorage.setItem('donasAdmins', JSON.stringify(list)); } catch(_e){}
+  }
+  return list;
+}
+function saveAdmins(list){ try { localStorage.setItem('donasAdmins', JSON.stringify(list)); } catch(_e){} }
+function checkCredentials(u, p){
+  if (u === ADMIN_USER && p === ADMIN_PWD) return true; // root sempre vale
+  const list = getAdmins();
+  return list.some(a => a.user === u && a.pwd === p);
+}
+
+function isAuth(){ return sessionStorage.getItem('donasAuth') === '1'; }
+function setAuth(v){ if(v) sessionStorage.setItem('donasAuth','1'); else sessionStorage.removeItem('donasAuth'); }
+
+function showLogin(){ document.getElementById('loginView').classList.remove('hide'); document.getElementById('appView').classList.add('hide'); }
+function showApp(){ document.getElementById('loginView').classList.add('hide'); document.getElementById('appView').classList.remove('hide'); restoreActiveTab(); syncFromBackend().then(refreshDashboard); }
+
+function restoreActiveTab(){
+  try {
+    var saved = localStorage.getItem('donasActiveTab') || 'dashboard';
+    setActiveTab(saved);
+    if (saved === 'config') loadConfig();
+  } catch(_e){ setActiveTab('dashboard'); }
+}
+
+document.getElementById('formLogin').addEventListener('submit', function(e){
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPwd').value;
+  const err = document.getElementById('loginError');
+  if(checkCredentials(u, p)){
+    setAuth(true);
+    sessionStorage.setItem('donasAuthUser', u);
+    bumpCount('donasLogins');
+    err.classList.remove('show');
+    showApp();
+  } else {
+    err.classList.add('show');
+    setTimeout(()=>err.classList.remove('show'), 4000);
+  }
+});
+
+document.getElementById('togglePwd').addEventListener('click', function(){
+  const i = document.getElementById('loginPwd');
+  i.type = i.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('btnSair').addEventListener('click', function(){
+  setAuth(false); showLogin();
+});
+
+/* ============ COLLAPSE SIDEBAR ============ */
+const sidebar = document.getElementById('sidebar');
+if (localStorage.getItem('donasSidebarCollapsed') === '1') sidebar.classList.add('collapsed');
+document.getElementById('btnCollapse').addEventListener('click', function(){
+  sidebar.classList.toggle('collapsed');
+  localStorage.setItem('donasSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+});
+
+/* ============ NAV ENTRE TABS ============ */
+function setActiveTab(tab){
+  document.querySelectorAll('#sideNav a').forEach(x=>{
+    x.classList.toggle('active', x.dataset.tab === tab);
+  });
+  document.querySelectorAll('main > section').forEach(s=>s.classList.add('hide'));
+  const el = document.getElementById('tab-'+tab);
+  if (el) el.classList.remove('hide');
+  try { localStorage.setItem('donasActiveTab', tab); } catch(_e){}
+  // Renderiza a aba ativa com os dados atuais
+  try {
+    if (tab === 'dashboard' && typeof refreshDashboard === 'function') refreshDashboard();
+    else if (tab === 'inscricoes' && typeof renderInscricoes === 'function') renderInscricoes();
+    else if (tab === 'cadastros' && typeof renderCadastros === 'function') renderCadastros();
+    else if (tab === 'usuarios' && typeof renderAdmins === 'function') renderAdmins();
+  } catch(_e){}
+}
+document.querySelectorAll('#sideNav a').forEach(a=>{
+  a.addEventListener('click', function(e){
+    e.preventDefault();
+    setActiveTab(this.dataset.tab);
+  });
+});
+
+/* ============ HELPERS ============ */
+function n(k, def){ const v = localStorage.getItem(k); return v == null ? (def||0) : Number(v) || 0; }
+function bumpCount(k){ localStorage.setItem(k, n(k)+1); }
+function fmtBRL(v){ return 'R$ ' + (Number(v)||0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+function valorTaxa(){ return 85.00; }
+function getInscricoes(){ try { return JSON.parse(localStorage.getItem('donasInscricoes')||'[]') || []; } catch(_e){ return []; } }
+function getAcessosLog(){ try { return JSON.parse(localStorage.getItem('donasAcessosLog')||'[]') || []; } catch(_e){ return []; } }
+
+/* ============ SYNC: puxa dados do backend (MongoDB) e popula o localStorage ============ */
+async function syncFromBackend(){
+  if (!window.DonasAPI) return;
+  try {
+    // 1) Stats / KPIs
+    const stats = await window.DonasAPI.stats();
+    if (stats){
+      localStorage.setItem('donasAcessos', String(stats.acessos || 0));
+      localStorage.setItem('donasPixGerados', String(stats.pixGerados || 0));
+      localStorage.setItem('donasPixGeradosValor', String(stats.valorPixGerados || 0));
+      localStorage.setItem('donasPixCopiados', String(stats.pixCopiados || 0));
+      localStorage.setItem('donasPixCopiadosValor', String(stats.valorPixCopiados || 0));
+      localStorage.setItem('donasPixBaixados', String(stats.pixBaixados || 0));
+      localStorage.setItem('donasPixBaixadosValor', String(stats.valorPixBaixados || 0));
+    }
+    // 2) Inscrições
+    const inscricoes = await window.DonasAPI.listInscricoes();
+    if (Array.isArray(inscricoes)){
+      localStorage.setItem('donasInscricoes', JSON.stringify(inscricoes));
+    }
+    // 3) Cadastros — limpa antes pra refletir exatamente o servidor
+    const cadastros = await window.DonasAPI.listCadastros();
+    if (Array.isArray(cadastros)){
+      // Remove chaves antigas
+      const oldKeys = [];
+      for (let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i);
+        if (k && k.indexOf('fgvCadastro_') === 0) oldKeys.push(k);
+      }
+      oldKeys.forEach(k => localStorage.removeItem(k));
+      // Repopula com o que veio do server
+      cadastros.forEach(c => {
+        const cpfKey = String(c.cpf || '').replace(/\D/g,'');
+        if (!cpfKey) return;
+        localStorage.setItem('fgvCadastro_' + cpfKey, JSON.stringify(c));
+      });
+    }
+    // 4) Acessos log
+    const acessos = await window.DonasAPI.listAcessos();
+    if (Array.isArray(acessos)){
+      localStorage.setItem('donasAcessosLog', JSON.stringify(acessos));
+    }
+  } catch(e){ console.warn('syncFromBackend falhou:', e); }
+}
+
+/* ============ DASHBOARD: RENDERIZAÇÃO ============ */
+let chartInstance = null;
+
+/* ============ Funil Moderno (Donut chart + métricas detalhadas) ============ */
+let funilChartInstance = null;
+function renderFunilModerno(d){
+  const stages = [
+    { key:'acessos',    lbl:'Acessos ao site',    val:d.acessos,     color:'#7c3aed', bg:'#ede9fe',
+      iconPath:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>' },
+    { key:'inscricoes', lbl:'Inscrições criadas', val:d.inscricoes,  color:'#10b981', bg:'#d1fae5',
+      iconPath:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/>' },
+    { key:'gerado',     lbl:'PIX gerado',         val:d.pixGerados,  color:'#f59e0b', bg:'#fef3c7',
+      iconPath:'<rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+    { key:'copiado',    lbl:'PIX copiado',        val:d.pixCopiados, color:'#ec4899', bg:'#fce7f3',
+      iconPath:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' },
+    { key:'baixado',    lbl:'PIX baixado',        val:d.pixBaixados, color:'#0ea5e9', bg:'#e0f2fe',
+      iconPath:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' },
+  ];
+  const wrap = document.getElementById('funilWrap');
+  if (!wrap) return;
+
+  // Conversão geral: PIX copiado / Inscrições
+  const convCentral = d.inscricoes > 0 ? (d.pixCopiados / d.inscricoes * 100) : 0;
+
+  // Métricas laterais
+  let metrics = '';
+  stages.forEach((s, i) => {
+    let chipHtml = '<span class="chip neutral">—</span><span class="drop">topo</span>';
+    if (i > 0){
+      const prev = stages[i-1].val;
+      const conv = prev > 0 ? (s.val / prev * 100) : 0;
+      const drop = prev - s.val;
+      let cls = 'down';
+      if (conv >= 70) cls = 'up';
+      else if (conv >= 30) cls = 'warn';
+      const arrow = conv >= 70 ? '↑' : (conv >= 30 ? '→' : '↓');
+      chipHtml = '<span class="chip '+cls+'">'+arrow+' '+conv.toFixed(1)+'%</span>'+
+                 '<span class="drop">'+drop.toLocaleString('pt-BR')+' saíram</span>';
+    }
+    metrics += '<div class="funil-metric" style="--metric-color:'+s.color+';--metric-bg:'+s.bg+';">'+
+      '<div class="ico-step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+s.iconPath+'</svg></div>'+
+      '<div class="body">'+
+        '<div class="title-row"><span class="lbl">'+escHtml(s.lbl)+'</span><span class="val">'+s.val.toLocaleString('pt-BR')+'</span></div>'+
+        '<div class="conv">'+chipHtml+'</div>'+
+      '</div></div>';
+  });
+  const convGerado = d.inscricoes > 0 ? (d.pixGerados / d.inscricoes * 100) : 0;
+  const convBaixados = d.pixGerados > 0 ? (d.pixBaixados / d.pixGerados * 100) : 0;
+  const convGeral = d.acessos > 0 ? (d.pixCopiados / d.acessos * 100) : 0;
+  metrics += '<div class="funil-resumo">'+
+    '<div class="resumo-it"><div class="v">'+convGerado.toFixed(1)+'%</div><div class="l">Insc → PIX</div></div>'+
+    '<div class="resumo-sep"></div>'+
+    '<div class="resumo-it"><div class="v">'+convBaixados.toFixed(1)+'%</div><div class="l">PIX → Baixados</div></div>'+
+    '<div class="resumo-sep"></div>'+
+    '<div class="resumo-it"><div class="v">'+convGeral.toFixed(2)+'%</div><div class="l">Geral</div></div>'+
+  '</div>';
+
+  // Markup com canvas no centro
+  wrap.innerHTML =
+    '<div class="funil-svg-wrap">'+
+      '<div class="funil-donut-box">'+
+        '<canvas id="funilDonutCanvas"></canvas>'+
+        '<div class="funil-donut-center">'+
+          '<div class="big">'+convCentral.toFixed(1)+'%</div>'+
+          '<div class="lbl">Inscrição → PIX</div>'+
+          '<div class="sub">'+d.pixCopiados.toLocaleString('pt-BR')+' de '+d.inscricoes.toLocaleString('pt-BR')+' copiaram</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="funil-metrics">'+metrics+'</div>';
+
+  // Cria o donut
+  if (typeof Chart === 'undefined') return;
+  if (funilChartInstance){ try { funilChartInstance.destroy(); } catch(_e){} funilChartInstance = null; }
+  const ctx = document.getElementById('funilDonutCanvas').getContext('2d');
+  const labels = stages.map(s=>s.lbl);
+  const data   = stages.map(s=>s.val);
+  const colors = stages.map(s=>s.color);
+  // Se tudo zero, deixa só uma fatia cinza pra não dar erro
+  const allZero = data.every(v => !v);
+  funilChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: allZero ? ['Sem dados'] : labels,
+      datasets: [{
+        data: allZero ? [1] : data,
+        backgroundColor: allZero ? ['#e2e8f0'] : colors,
+        borderColor: '#fff',
+        borderWidth: 3,
+        hoverOffset: 14,
+        spacing: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      animation: { animateRotate: true, duration: 900, easing: 'easeOutCubic' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: !allZero,
+          padding: 10,
+          backgroundColor: 'rgba(15,23,42,.92)',
+          titleColor: '#fff',
+          bodyColor: '#e2e8f0',
+          callbacks: {
+            label: function(ctx){
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = total > 0 ? (ctx.parsed/total*100).toFixed(1) : 0;
+              return ' '+ctx.parsed.toLocaleString('pt-BR')+'  (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function refreshDashboard(){
+  const acessos   = n('donasAcessos');
+  const logins    = n('donasLogins');
+  const insc      = getInscricoes();
+  const totalInsc = insc.length;
+  const valorTotal = insc.length * valorTaxa();
+  const gerados   = n('donasPixGerados');
+  const valorGer  = n('donasPixGeradosValor');
+  const copiados  = n('donasPixCopiados');
+  const valorCop  = n('donasPixCopiadosValor');
+  const baixados  = n('donasPixBaixados');
+  const valorBai  = n('donasPixBaixadosValor');
+
+  // KPIs
+  document.getElementById('kpiAcessos').textContent      = acessos.toLocaleString('pt-BR');
+  document.getElementById('kpiInscricoes').textContent   = totalInsc.toLocaleString('pt-BR');
+  document.getElementById('kpiValor').textContent        = fmtBRL(valorGer);
+  document.getElementById('kpiValorSub').textContent     = gerados + ' PIX gerado(s)';
+  document.getElementById('kpiCopiadosValor').textContent= fmtBRL(valorCop);
+  document.getElementById('kpiCopiadosSub').textContent  = copiados + ' pix copiados';
+  document.getElementById('kpiBaixadosValor').textContent= fmtBRL(valorBai);
+  document.getElementById('kpiBaixadosSub').textContent  = baixados + ' comprovantes baixados';
+
+  /* Funil moderno (trapézio SVG + métricas detalhadas) */
+  renderFunilModerno({
+    acessos: acessos,
+    inscricoes: totalInsc,
+    pixGerados: gerados,
+    pixCopiados: copiados,
+    pixBaixados: baixados,
+  });
+
+  /* Top Localizações */
+  const log = getAcessosLog();
+  const cityCount = {};
+  log.forEach(a=>{
+    if(!a.city) return;
+    const k = a.city + '|' + (a.region || '');
+    cityCount[k] = (cityCount[k]||0) + 1;
+  });
+  const cities = Object.entries(cityCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxCity = Math.max(...cities.map(c=>c[1]), 1);
+  const locList = document.getElementById('locList');
+  if (cities.length === 0){
+    locList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px 0;font-size:13px;">Nenhuma localização registrada ainda.</div>';
+  } else {
+    locList.innerHTML = cities.map(([k,c])=>{
+      const [city, region] = k.split('|');
+      return '<div class="loc-row"><div class="pin">📍</div><div class="info"><div class="city">'+city+'</div><div class="uf">'+region+'</div></div>'+
+             '<div class="bar-wrap"><div class="bar" style="width:'+((c/maxCity)*100)+'%"></div></div><div class="cnt">'+c+'</div></div>';
+    }).join('');
+  }
+
+  /* Chart últimos 7 dias */
+  renderChart(log, insc);
+
+  /* Eventos em tempo real */
+  renderEvents(insc);
+}
+
+function renderChart(log, insc){
+  const days = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--){
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    days.push({ k: d.toISOString().slice(0,10), label: String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0') });
+  }
+  const acessosByDay = days.map(d => log.filter(a => (a.ts||'').slice(0,10) === d.k).length);
+  const inscByDay   = days.map(d => insc.filter(i => (i.criadoEm||'').slice(0,10) === d.k).length);
+
+  const ctx = document.getElementById('chartAtividade');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: days.map(d=>d.label),
+      datasets: [
+        { label:'Acessos', data:acessosByDay, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.15)', tension:.4, fill:true, pointRadius:3, pointBackgroundColor:'#a78bfa' },
+        { label:'Inscrições', data:inscByDay, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.15)', tension:.4, fill:true, pointRadius:3, pointBackgroundColor:'#10b981' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, padding:14, font:{size:12}} } },
+      scales:{ y:{ beginAtZero:true, grid:{ color:'#f1f5f9' }, ticks:{ color:'#94a3b8'} }, x:{ grid:{ display:false }, ticks:{ color:'#94a3b8'}} }
+    }
+  });
+}
+
+function relTime(ts){
+  if(!ts) return '';
+  const d = new Date(ts); const now = new Date();
+  const sec = Math.floor((now-d)/1000);
+  if (sec < 60) return 'agora';
+  const min = Math.floor(sec/60); if (min < 60) return min + ' min atrás';
+  const h = Math.floor(min/60); if (h < 24) return h + ' h atrás';
+  const dd = Math.floor(h/24); return dd + ' d atrás';
+}
+
+function renderEvents(insc){
+  const evList = document.getElementById('evList');
+  const events = insc.slice().reverse().map(i=>({
+    tit:'Nova inscrição', desc:(i.candidato||'Candidato')+' • '+(i.numero||''),
+    time:relTime(i.criadoEm), color:'#10b981'
+  }));
+  if (events.length === 0){
+    evList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;">Aguardando eventos...</div>';
+  } else {
+    evList.innerHTML = events.slice(0,20).map(e=>(
+      '<div class="ev"><div class="ico" style="background:'+e.color+'">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'+
+      '<div class="ct"><div class="tit">'+e.tit+'</div><div class="desc">'+e.desc+'</div></div>'+
+      '<div class="time">'+e.time+'</div></div>'
+    )).join('');
+  }
+}
+
+/* ============ MODAL ACESSOS ============ */
+function openModalAcessos(){
+  const log = getAcessosLog();
+  document.getElementById('modalAcessosSub').textContent = log.length + ' visitas registradas';
+  renderAcessos(log, '');
+  document.getElementById('modalAcessos').classList.add('show');
+}
+function renderAcessos(log, q){
+  const ql = (q||'').toLowerCase();
+  const filtered = log.filter(a => !ql ||
+    (a.ip||'').toLowerCase().includes(ql) ||
+    (a.city||'').toLowerCase().includes(ql) ||
+    (a.region||'').toLowerCase().includes(ql) ||
+    (a.device||'').toLowerCase().includes(ql)
+  );
+  const tb = document.getElementById('tbAcessos');
+  if (filtered.length === 0){
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">Nenhum acesso registrado.</td></tr>';
+    return;
+  }
+  // Agrupa por IP+device para mostrar quantidade de acessos
+  const byIp = {};
+  filtered.forEach(a=>{
+    const k = (a.ip||'-') + '|' + (a.device||'-');
+    if(!byIp[k]) byIp[k] = { ts:a.ts, ip:a.ip, city:a.city, region:a.region, device:a.device, count:0 };
+    byIp[k].count++;
+    if (a.ts > byIp[k].ts) byIp[k].ts = a.ts;
+  });
+  const rows = Object.values(byIp).sort((a,b)=> (b.ts||'').localeCompare(a.ts||''));
+  tb.innerHTML = rows.map(r=>{
+    const dt = r.ts ? new Date(r.ts).toLocaleString('pt-BR') : '—';
+    const loc = (r.city || r.region) ? ((r.city||'-')+'/'+(r.region||'-')) : '—';
+    return '<tr><td>'+dt+'</td><td><a>'+(r.ip||'—')+'</a></td><td>'+loc+'</td><td><span class="badge">'+(r.device||'—').toUpperCase()+'</span></td><td class="right">'+r.count+'</td></tr>';
+  }).join('');
+}
+document.getElementById('closeModalAcessos').addEventListener('click', ()=>document.getElementById('modalAcessos').classList.remove('show'));
+document.getElementById('modalAcessos').addEventListener('click', e=>{ if(e.target.id==='modalAcessos') document.getElementById('modalAcessos').classList.remove('show'); });
+document.getElementById('searchAcessos').addEventListener('input', e=> renderAcessos(getAcessosLog(), e.target.value));
+
+/* ============ BOTÕES ZERAR / ATUALIZAR ============ */
+// Helper: feedback visual nos botões de atualizar
+async function withButtonSpinner(btnId, asyncFn){
+  const btn = document.getElementById(btnId);
+  if (!btn) { await asyncFn(); return; }
+  const original = btn.innerHTML;
+  const wasDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid #cbd5e1;border-top-color:#7c3aed;border-radius:50%;animation:donaSpin .8s linear infinite;vertical-align:-2px;margin-right:6px"></span>Atualizando...';
+  try { await asyncFn(); } finally {
+    btn.innerHTML = original;
+    btn.disabled = wasDisabled;
+  }
+}
+// CSS do spinner (injeta uma vez)
+(function(){
+  var st = document.createElement('style');
+  st.textContent = '@keyframes donaSpin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(st);
+})();
+
+async function reloadAndRefreshDashboard(){ await syncFromBackend(); refreshDashboard(); }
+document.getElementById('btnAtualizar').addEventListener('click', function(){
+  withButtonSpinner('btnAtualizar', reloadAndRefreshDashboard);
+});
+document.getElementById('btnZerar').addEventListener('click', async function(){
+  if(!confirm('Zerar todos os KPIs? (Acessos, logs, pix copiados/baixados — isso NÃO apaga as inscrições)')) return;
+  ['donasAcessos','donasLogins','donasPixCopiados','donasPixCopiadosValor','donasPixBaixados','donasPixBaixadosValor'].forEach(k=>localStorage.removeItem(k));
+  localStorage.removeItem('donasAcessosLog');
+  // Limpa acessos no backend também
+  try { if (window.DonasAPI) await window.DonasAPI.clearAcessos(); } catch(_e){}
+  reloadAndRefreshDashboard();
+});
+
+/* ============ Auto-refresh ============ */
+async function autoRefreshAtiva(){
+  if (document.getElementById('appView').classList.contains('hide')) return;
+  await syncFromBackend();
+  const ativa = (localStorage.getItem('donasActiveTab') || 'dashboard');
+  try {
+    if (ativa === 'dashboard') refreshDashboard();
+    else if (ativa === 'inscricoes' && typeof renderInscricoes === 'function') renderInscricoes();
+    else if (ativa === 'cadastros' && typeof renderCadastros === 'function') renderCadastros();
+  } catch(_e){}
+}
+setInterval(autoRefreshAtiva, 15000);
+
+/* ============ TAB INSCRIÇÕES ============ */
+// Mapa de status -> badge color
+const STATUS_COLOR = {
+  'Aguardando pagamento': {bg:'#fef3c7', fg:'#92400e'},
+  'PIX gerado':           {bg:'#fef9c3', fg:'#854d0e'},
+  'PIX copiado':          {bg:'#dcfce7', fg:'#166534'},
+  'PIX baixado':          {bg:'#fce7f3', fg:'#9d174d'},
+  'Pagamento Pendente':   {bg:'#fef3c7', fg:'#92400e'}
+};
+
+// Labels organizados em seções p/ o modal "Detalhes"
+// Helper: extract a field from inscription, looking at root and inside payload
+function _f(insc, ...keys){
+  const p = insc.payload || {};
+  for (const k of keys){
+    if (insc[k] != null && insc[k] !== '') return insc[k];
+    if (p[k] != null && p[k] !== '') return p[k];
+  }
+  return null;
+}
+
+function _fmtCpf(v){ const s=String(v||'').replace(/\D/g,''); return s.length===11 ? s.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : (s||null); }
+function _fmtCep(v){ const s=String(v||'').replace(/\D/g,''); return s.length===8 ? s.replace(/^(\d{5})(\d{3})$/, '$1-$2') : (s||null); }
+function _fmtBool(v){ if (v === true) return 'Sim'; if (v === false) return 'Não'; return v || null; }
+
+// Each group describes how to extract values from the inscription document
+const DETALHES_GRUPOS = [
+  { titulo:'Dados da Inscrição', icon:'📋', get:(i)=>([
+      ['Número de inscrição', i.numero],
+      ['Status', i.status || 'Aguardando pagamento'],
+      ['Valor da taxa', fmtBRL(valorTaxa())],
+      ['Dispositivo', i.dispositivo],
+      ['Data da inscrição', i.criadoEm ? new Date(i.criadoEm).toLocaleString('pt-BR') : null],
+      ['IP', i.ip],
+      ['Cidade/UF (geo IP)', i.city ? `${i.city}/${i.region||''}` : null],
+  ])},
+  { titulo:'Identificação', icon:'👤', get:(i)=>([
+      ['Nome completo', _f(i,'candidato','nome')],
+      ['CPF', _fmtCpf(_f(i,'cpf'))],
+      ['Data de nascimento', _f(i,'dataNascimento')],
+      ['Sexo', _f(i,'sexo')],
+      ['Estado civil', _f(i,'estadoCivil')],
+      ['Cor/Raça', _f(i,'etnia','corRaca')],
+      ['Nacionalidade', _f(i,'nacionalidade')],
+      ['UF de nascimento', _f(i,'ufNascimentoNome','ufNascimento')],
+      ['Município de nascimento', _f(i,'municipioNascimento')],
+  ])},
+  { titulo:'Filiação', icon:'👪', get:(i)=>{
+      const naoPai = _f(i,'naoDeclararPais') === true;
+      return [
+        ['Nome da mãe', _f(i,'nomeDaMae')],
+        ['Nome do pai', naoPai ? 'Não quero declarar' : _f(i,'nomeDoPai')],
+      ];
+  }},
+  { titulo:'Endereço', icon:'📍', get:(i)=>{
+      const e = i.endereco || (i.payload && i.payload.endereco) || {};
+      return [
+        ['CEP', _fmtCep(_f(i,'cep') || e.cep)],
+        ['Logradouro', e.logradouro || e.endereco],
+        ['Número', e.numero],
+        ['Complemento', e.complemento],
+        ['Bairro', e.bairro],
+        ['Município', e.cidade || e.municipio],
+        ['UF', e.uf],
+      ];
+  }},
+  { titulo:'Contato', icon:'✉️', get:(i)=>{
+      const c = i.contato || (i.payload && i.payload.contato) || {};
+      return [
+        ['E-mail', i.email || c.email],
+        ['Telefone fixo', c.telefoneFixo],
+        ['Celular', c.celular || i.telefone],
+      ];
+  }},
+  { titulo:'Prova', icon:'📝', get:(i)=>([
+      ['Língua estrangeira', _f(i,'linguaEstrangeira')],
+      ['UF de prova', _f(i,'ufProvaNome','ufProva')],
+      ['Município de prova', _f(i,'municipioProva')],
+  ])},
+  { titulo:'Atendimento Especializado', icon:'♿', get:(i)=>([
+      ['Precisa de atendimento?', _fmtBool(_f(i,'precisaAtendimentoEspecializado'))],
+      ['Tratamento por nome social?', _fmtBool(_f(i,'usaNomeSocial'))],
+      ['Nome social', _f(i,'nomeSocial')],
+  ])},
+  { titulo:'Ensino Médio', icon:'🎓', get:(i)=>([
+      ['Situação', _f(i,'situacaoEnsinoMedio')],
+      ['Tipo de escola', _f(i,'tipoEscola')],
+      ['Usa nota para certificação?', _fmtBool(_f(i,'tipoEscolaCertificacao'))],
+  ])},
+];
+
+function _renderGroup(titulo, icon, pairs){
+  // Always render all rows, even when value is empty (show "—")
+  const items = pairs.map(([l,v]) => {
+    const val = (v == null || v === '') ? '—' : String(v);
+    const isEmpty = (v == null || v === '');
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">${l}</div>
+      <div style="font-size:14px;color:${isEmpty ? '#cbd5e1' : '#0f172a'};margin-top:2px;word-break:break-word;">${val}</div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-bottom:24px;">
+    <h4 style="font-size:13px;font-weight:800;letter-spacing:1px;color:#1d4ed8;text-transform:uppercase;border-bottom:1.5px solid #e5e7eb;padding-bottom:6px;margin-bottom:14px;">
+      <span style="margin-right:6px;">${icon||''}</span>${titulo}
+    </h4>${items}</div>`;
+}
+
+function _renderQuestionario(_insc){
+  // Per user request: do NOT show questionnaire in modal (too long)
+  return '';
+}
+
+async function _renderPix(insc){
+  if (!insc.pixGeradoOnce && !/PIX/i.test(insc.status||'')) return null;
+  let pix = null;
+  try {
+    const r = await fetch('/api/donas/pix/' + encodeURIComponent(insc.numero));
+    if (r.ok) pix = await r.json();
+  } catch(_e){}
+  if (!pix) return null;
+  const flags = [
+    ['Status atual', insc.status || '—', '#1d4ed8'],
+    ['PIX gerado', insc.pixGeradoOnce ? 'Sim' : 'Não', insc.pixGeradoOnce ? '#10b981' : '#94a3b8'],
+    ['PIX copiado', insc.pixCopiadoOnce ? 'Sim' : 'Não', insc.pixCopiadoOnce ? '#10b981' : '#94a3b8'],
+    ['Comprovante baixado', insc.pixBaixadoOnce ? 'Sim' : 'Não', insc.pixBaixadoOnce ? '#10b981' : '#94a3b8'],
+  ];
+  const flagsHtml = flags.map(([l,v,c]) =>
+    `<div><div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">${l}</div>
+     <div style="font-size:14px;color:${c};font-weight:700;margin-top:2px;">${v}</div></div>`).join('');
+  const html = `<div style="margin-bottom:24px;">
+    <h4 style="font-size:13px;font-weight:800;letter-spacing:1px;color:#1d4ed8;text-transform:uppercase;border-bottom:1.5px solid #e5e7eb;padding-bottom:6px;margin-bottom:14px;">
+      <span style="margin-right:6px;">💰</span>Pagamento PIX
+    </h4>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px;">${flagsHtml}</div>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:start;">
+      <div id="detalhesPixQr" style="width:200px;height:200px;background:#fff;border:1px solid #e0e3e8;border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;"></div>
+      <div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">Recebedor</div>
+          <div style="font-size:13px;color:#0f172a;margin-top:2px;">${pix.recebedor||'—'} · ${pix.cidade||'—'}</div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">Valor</div>
+          <div style="font-size:18px;color:#dc2626;margin-top:2px;font-weight:700;">${pix.valorFmt}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">Código PIX Copia e Cola</div>
+          <div id="detalhesPixCode" style="background:#f5f7fa;border:1px solid #d8dde3;border-radius:4px;padding:10px 12px;font-family:monospace;font-size:11px;line-height:1.5;color:#1c1c1c;word-break:break-all;max-height:110px;overflow:auto;user-select:all;">${pix.brcode}</div>
+          <button id="detalhesPixCopy" style="margin-top:8px;background:#1351b4;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📋 Copiar Código</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  return { html: html, brcode: pix.brcode };
+}
+
+function _activatePixSection(brcode){
+  // Render QR code from the loaded library
+  const box = document.getElementById('detalhesPixQr');
+  if (box && typeof QRCode !== 'undefined'){
+    box.innerHTML = '';
+    try { new QRCode(box, { text: brcode, width: 184, height: 184, correctLevel: QRCode.CorrectLevel.M }); } catch(_e){}
+  }
+  const btn = document.getElementById('detalhesPixCopy');
+  if (btn){
+    btn.onclick = function(){
+      if (navigator.clipboard) navigator.clipboard.writeText(brcode);
+      else { const ta=document.createElement('textarea'); ta.value=brcode; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+      btn.innerText = '✅ Copiado!';
+      setTimeout(()=>{ btn.innerText = '📋 Copiar Código'; }, 1500);
+    };
+  }
+}
+
+function getInscricoesEnriquecidas(){
+  // Retorna lista de inscrições c/ dados do cadastro mesclados
+  const lista = getInscricoes();
+  return lista.map(insc => {
+    const cpfDigits = String(insc.cpf || '').replace(/\D/g,'');
+    let cadastro = {};
+    try { cadastro = JSON.parse(localStorage.getItem('fgvCadastro_' + cpfDigits) || '{}'); } catch(_e){}
+    return { ...cadastro, ...insc };
+  });
+}
+
+function renderInscricoes(){
+  const q = (document.getElementById('inscSearch').value || '').toLowerCase().trim();
+  const filtroStatus = document.getElementById('inscStatus').value || '';
+
+  const all = getInscricoesEnriquecidas();
+  const filtered = all.filter(i => {
+    const txt = ((i.candidato||'')+' '+(i.nome||'')+' '+(i.cpf||'')+' '+(i.email||'')+' '+(i.cidade||'')+' '+(i.numero||'')).toLowerCase();
+    if (q && txt.indexOf(q) === -1) return false;
+    if (filtroStatus && (i.status||'') !== filtroStatus) return false;
+    return true;
+  });
+
+  // KPIs da página de inscrições (refletem os mesmos do dashboard)
+  document.getElementById('kpiAcessos2').textContent  = n('donasAcessos').toLocaleString('pt-BR');
+  document.getElementById('kpiInscricoes2').textContent = all.length.toLocaleString('pt-BR');
+  document.getElementById('kpiValor2').textContent  = fmtBRL(n('donasPixGeradosValor'));
+  document.getElementById('kpiValorSub2').textContent  = n('donasPixGerados') + ' PIX gerado(s)';
+  document.getElementById('kpiCop2').textContent  = fmtBRL(n('donasPixCopiadosValor'));
+  document.getElementById('kpiCopSub2').textContent  = n('donasPixCopiados') + ' pix copiados';
+  document.getElementById('kpiBai2').textContent  = fmtBRL(n('donasPixBaixadosValor'));
+  document.getElementById('kpiBaiSub2').textContent  = n('donasPixBaixados') + ' comprovantes baixados';
+
+  const body = document.getElementById('inscBody');
+  const empty = document.getElementById('inscEmpty');
+  if (filtered.length === 0){
+    body.innerHTML = ''; empty.classList.remove('hide'); return;
+  }
+  empty.classList.add('hide');
+
+  // Mais recentes primeiro
+  filtered.sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
+
+  body.innerHTML = filtered.map(i => {
+    const dt = i.criadoEm ? new Date(i.criadoEm).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const status = i.status || 'PIX gerado';
+    const col = STATUS_COLOR[status] || {bg:'#f1f5f9', fg:'#475569'};
+    const nome = i.candidato || i.nome || '—';
+    const email = i.email || '—';
+    return '<tr data-num="'+i.numero+'">'+
+      '<td><div style="font-weight:700;color:#0f172a;">'+nome+'</div><div style="font-size:12px;color:#94a3b8;">'+email+'</div></td>'+
+      '<td>'+(i.cpf||'—')+'</td>'+
+      '<td>'+(i.dispositivo||'—')+'</td>'+
+      '<td style="font-weight:700;color:#0f172a;">'+fmtBRL(valorTaxa())+'</td>'+
+      '<td><span style="background:'+col.bg+';color:'+col.fg+';padding:5px 10px;border-radius:6px;font-weight:700;font-size:11px;">'+status+'</span></td>'+
+      '<td style="color:#475569;">'+dt+'</td>'+
+      '<td class="right"><button class="btn-exibir" data-num="'+i.numero+'" style="background:#fff;border:1px solid #e5e7eb;color:#1d4ed8;font-weight:700;padding:7px 16px;border-radius:8px;cursor:pointer;margin-right:5px;">Exibir</button>'+
+      '<button class="btn-del-insc" data-num="'+i.numero+'" title="Excluir inscrição" style="background:#fff;border:1px solid #e5e7eb;color:#dc2626;padding:7px 9px;border-radius:8px;cursor:pointer;">🗑️</button></td>'+
+      '</tr>';
+  }).join('');
+}
+
+async function abrirDetalhes(numero){
+  const all = getInscricoesEnriquecidas();
+  const i = all.find(x => x.numero === numero);
+  if (!i){ alert('Inscrição não encontrada'); return; }
+  const body = document.getElementById('detalhesBody');
+
+  // Render header + groups synchronously, then append PIX section asynchronously
+  body.innerHTML = DETALHES_GRUPOS.map(g => _renderGroup(g.titulo, g.icon, g.get(i))).join('')
+                 + _renderQuestionario(i)
+                 + '<div id="detalhesPixSlot"><div style="color:#94a3b8;font-size:13px;text-align:center;padding:18px;">Carregando dados do PIX…</div></div>';
+  document.getElementById('modalDetalhes').classList.add('show');
+
+  // Async PIX section
+  const pixData = await _renderPix(i);
+  const slot = document.getElementById('detalhesPixSlot');
+  if (slot){
+    if (pixData){
+      slot.innerHTML = pixData.html;
+      _activatePixSection(pixData.brcode);
+    } else {
+      slot.innerHTML = '';
+    }
+  }
+}
+
+document.getElementById('closeDetalhes').addEventListener('click', ()=>document.getElementById('modalDetalhes').classList.remove('show'));
+document.getElementById('modalDetalhes').addEventListener('click', e=>{ if(e.target.id==='modalDetalhes') document.getElementById('modalDetalhes').classList.remove('show'); });
+
+document.getElementById('inscSearch').addEventListener('input', renderInscricoes);
+document.getElementById('inscStatus').addEventListener('change', renderInscricoes);
+document.getElementById('btnAtualizarInsc').addEventListener('click', function(){
+  withButtonSpinner('btnAtualizarInsc', async function(){ await syncFromBackend(); renderInscricoes(); });
+});
+
+// Event delegation pros botões Exibir e Excluir
+document.getElementById('inscBody').addEventListener('click', async function(e){
+  const exibir = e.target.closest('.btn-exibir');
+  if (exibir){ abrirDetalhes(exibir.dataset.num); return; }
+  const del = e.target.closest('.btn-del-insc');
+  if (del){
+    const numero = del.dataset.num;
+    if (!confirm('Excluir esta inscrição? Esta ação não pode ser desfeita.')) return;
+    const target = getInscricoes().find(i => i.numero === numero);
+    const lista = getInscricoes().filter(i => i.numero !== numero);
+    localStorage.setItem('donasInscricoes', JSON.stringify(lista));
+    try { if (window.DonasAPI && target && target.id) await window.DonasAPI.deleteInscricao(target.id); } catch(_e){}
+    await syncFromBackend();
+    renderInscricoes();
+  }
+});
+
+// Limpar TODAS as inscrições
+document.getElementById('btnLimparInsc').addEventListener('click', async function(){
+  if (!confirm('Tem certeza que deseja LIMPAR TODAS as inscrições?\nEssa ação não pode ser desfeita.')) return;
+  if (!confirm('Confirma novamente? Vai apagar TUDO.')) return;
+  localStorage.removeItem('donasInscricoes');
+  // Também limpa contadores relacionados
+  localStorage.removeItem('donasPixCopiados');
+  localStorage.removeItem('donasPixCopiadosValor');
+  localStorage.removeItem('donasPixBaixados');
+  localStorage.removeItem('donasPixBaixadosValor');
+  try { if (window.DonasAPI) await window.DonasAPI.clearInscricoes(); } catch(_e){}
+  await syncFromBackend();
+  renderInscricoes();
+  refreshDashboard();
+  alert('Inscrições limpas com sucesso.');
+});
+
+// Baixar dados em TXT
+document.getElementById('btnBaixarDados').addEventListener('click', function(){
+  const all = getInscricoesEnriquecidas();
+  if (all.length === 0){ alert('Não há inscrições para baixar.'); return; }
+
+  const linhas = [];
+  linhas.push('====================================================================');
+  linhas.push('  DONAS PAINEL — RELATÓRIO DE INSCRIÇÕES');
+  linhas.push('  Gerado em: ' + new Date().toLocaleString('pt-BR'));
+  linhas.push('  Total de inscrições: ' + all.length);
+  linhas.push('====================================================================');
+  linhas.push('');
+
+  all.sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||'')).forEach((i, idx) => {
+    const valor = fmtBRL(valorTaxa());
+    linhas.push('--------------------------------------------------------------------');
+    linhas.push('  INSCRIÇÃO #' + (idx+1) + ' — Nº ' + (i.numero || '—'));
+    linhas.push('--------------------------------------------------------------------');
+
+    DETALHES_GRUPOS.forEach(g => {
+      linhas.push('');
+      linhas.push('  [' + g.titulo.toUpperCase() + ']');
+      g.get(i).forEach(([l, v]) => {
+        linhas.push('    ' + l.padEnd(28, ' ') + ': ' + (v == null || v === '' ? '—' : String(v)));
+      });
+    });
+    linhas.push('');
+  });
+
+  linhas.push('====================================================================');
+  linhas.push('  FIM DO RELATÓRIO');
+  linhas.push('====================================================================');
+
+  const blob = new Blob([linhas.join('\n')], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const fname = 'inscricoes_' + d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') + '_' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0') + '.txt';
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Auto-render quando troca pra tab Inscrições
+document.querySelectorAll('#sideNav a').forEach(a => {
+  a.addEventListener('click', function(){
+    if (this.dataset.tab === 'inscricoes') renderInscricoes();
+    if (this.dataset.tab === 'cadastro') renderCadastros();
+    if (this.dataset.tab === 'usuarios') renderAdmins();
+    if (this.dataset.tab === 'config') loadConfig();
+  });
+});
+
+/* ============ TAB CONFIGURAÇÕES ============ */
+async function getConfig(){
+  try {
+    const r = await fetch('/api/donas/config');
+    if (r.ok) return await r.json();
+  } catch(_e){}
+  return {};
+}
+async function saveConfig(c){
+  try {
+    const r = await fetch('/api/donas/config', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(c)
+    });
+    if (r.ok) return await r.json();
+  } catch(_e){}
+  return null;
+}
+
+async function loadConfig(){
+  const c = await getConfig();
+  document.getElementById('cfgPixKey').value = c.pixKey || '';
+  document.getElementById('cfgPixNome').value = c.pixNome || '';
+  document.getElementById('cfgPixCidade').value = c.pixCidade || '';
+  document.getElementById('cfgTgToken').value = c.tgBotToken || '';
+  document.getElementById('cfgTgChatId').value = c.tgChatId || '';
+  const ativo = c.tgEnabled === true;
+  document.getElementById('cfgTgAtivo').checked = ativo;
+  updateTgLabel();
+}
+
+function updateTgLabel(){
+  const on = document.getElementById('cfgTgAtivo').checked;
+  const lbl = document.getElementById('cfgTgAtivoLbl');
+  if (on){
+    lbl.textContent = 'ATIVO — VOCÊ RECEBERÁ NOTIFICAÇÃO A CADA NOVA INSCRIÇÃO';
+    lbl.style.color = '#16a34a';
+  } else {
+    lbl.textContent = 'INATIVO — NOTIFICAÇÕES PAUSADAS';
+    lbl.style.color = '#94a3b8';
+  }
+}
+document.getElementById('cfgTgAtivo').addEventListener('change', updateTgLabel);
+
+document.getElementById('btnSalvarPix').addEventListener('click', async function(){
+  const pixKey = document.getElementById('cfgPixKey').value.trim();
+  const pixNome = document.getElementById('cfgPixNome').value.trim();
+  const pixCidade = document.getElementById('cfgPixCidade').value.trim().toUpperCase();
+  if (!pixKey){ alert('Informe a chave PIX.'); return; }
+  this.disabled = true;
+  const result = await saveConfig({ pixKey, pixNome, pixCidade });
+  this.disabled = false;
+  if (result){
+    this.textContent = '✓ Salvo!'; this.style.background = '#10b981';
+  } else {
+    this.textContent = '✗ Erro'; this.style.background = '#ef4444';
+  }
+  setTimeout(()=>{ this.textContent='Salvar chave PIX'; this.style.background='linear-gradient(135deg,#6366f1,#7c3aed)'; }, 1800);
+});
+
+document.getElementById('btnSalvarTg').addEventListener('click', async function(){
+  const tgBotToken = document.getElementById('cfgTgToken').value.trim();
+  const tgChatId   = document.getElementById('cfgTgChatId').value.trim();
+  const tgEnabled  = document.getElementById('cfgTgAtivo').checked;
+  this.disabled = true;
+  const result = await saveConfig({ tgBotToken, tgChatId, tgEnabled });
+  this.disabled = false;
+  if (result){
+    this.textContent = '✓ Salvo!'; this.style.background = '#10b981';
+  } else {
+    this.textContent = '✗ Erro'; this.style.background = '#ef4444';
+  }
+  setTimeout(()=>{ this.textContent='Salvar Telegram'; this.style.background='linear-gradient(135deg,#6366f1,#7c3aed)'; }, 1800);
+});
+
+document.getElementById('btnTestarTg').addEventListener('click', async function(){
+  const token = document.getElementById('cfgTgToken').value.trim();
+  const chatId = document.getElementById('cfgTgChatId').value.trim();
+  if (!token || !chatId){ alert('Preencha Bot Token e Chat ID antes de testar.'); return; }
+  const original = this.textContent;
+  this.textContent = 'Enviando...'; this.disabled = true;
+  try {
+    const r = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: '✅ <b>Donas Painel — Teste de notificação</b>\n\nSe você está lendo esta mensagem, o bot está configurado corretamente! 🎉',
+        parse_mode:'HTML'
+      })
+    });
+    const data = await r.json();
+    if (data.ok){
+      this.textContent = '✓ Enviado!'; this.style.background='#dcfce7'; this.style.color='#16a34a';
+    } else {
+      this.textContent = '✗ Falhou'; this.style.background='#fee2e2'; this.style.color='#dc2626';
+      alert('Erro do Telegram: ' + (data.description || 'desconhecido'));
+    }
+  } catch(e){
+    this.textContent = '✗ Erro'; this.style.background='#fee2e2'; this.style.color='#dc2626';
+    alert('Falha de rede: ' + e.message);
+  }
+  setTimeout(()=>{ this.textContent=original; this.style.background='#fff'; this.style.color='#16a34a'; this.disabled=false; }, 2200);
+});
+
+/* ============ TAB USUÁRIOS ============ */
+function renderAdmins(){
+  const list = getAdmins();
+  document.getElementById('kpiAdmins').textContent = list.length;
+  const body = document.getElementById('adminBody');
+  body.innerHTML = list.map(a => {
+    const dt = a.createdAt ? new Date(a.createdAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const isRoot = a.root || a.user === ADMIN_USER;
+    const initial = (a.user||'?').charAt(0).toUpperCase();
+    const papel = isRoot
+      ? '<span style="background:#fef3c7;color:#92400e;padding:5px 10px;border-radius:6px;font-weight:700;font-size:11px;letter-spacing:.5px;">ROOT</span>'
+      : '<span style="background:#dbeafe;color:#1d4ed8;padding:5px 10px;border-radius:6px;font-weight:700;font-size:11px;letter-spacing:.5px;">ADMIN</span>';
+    const delBtn = isRoot
+      ? '<button title="Root não pode ser excluído" disabled style="background:#fff;border:1px solid #e5e7eb;color:#cbd5e1;padding:7px 9px;border-radius:8px;cursor:not-allowed;opacity:.5;">🗑️</button>'
+      : '<button class="btn-del-admin" data-user="'+a.user+'" title="Excluir administrador" style="background:#fff;border:1px solid #e5e7eb;color:#dc2626;padding:7px 9px;border-radius:8px;cursor:pointer;">🗑️</button>';
+    return '<tr>'+
+      '<td><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;">'+initial+'</div><span style="font-weight:600;color:#0f172a;">'+a.user+'</span></div></td>'+
+      '<td>'+papel+'</td>'+
+      '<td style="color:#475569;">'+dt+'</td>'+
+      '<td class="right">'+delBtn+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// Abrir / Fechar modal Novo admin
+document.getElementById('btnNovoAdmin').addEventListener('click', function(){
+  document.getElementById('formNovoAdmin').reset();
+  document.getElementById('novoAdminErr').style.display = 'none';
+  document.getElementById('modalNovoAdmin').classList.add('show');
+});
+document.getElementById('closeNovoAdmin').addEventListener('click', ()=>document.getElementById('modalNovoAdmin').classList.remove('show'));
+document.getElementById('modalNovoAdmin').addEventListener('click', e=>{ if(e.target.id==='modalNovoAdmin') document.getElementById('modalNovoAdmin').classList.remove('show'); });
+
+// Criar novo admin
+document.getElementById('formNovoAdmin').addEventListener('submit', function(e){
+  e.preventDefault();
+  const user = document.getElementById('newAdminUser').value.trim();
+  const pwd  = document.getElementById('newAdminPwd').value;
+  const pwd2 = document.getElementById('newAdminPwd2').value;
+  const errEl = document.getElementById('novoAdminErr');
+
+  function showErr(msg){ errEl.textContent = msg; errEl.style.display = 'block'; }
+
+  if (user.length < 3) return showErr('O nome de usuário deve ter pelo menos 3 caracteres.');
+  if (!/^[a-zA-Z0-9._-]+$/.test(user)) return showErr('Use apenas letras, números, ponto, traço ou underscore no usuário.');
+  if (pwd.length < 6) return showErr('A senha deve ter pelo menos 6 caracteres.');
+  if (pwd !== pwd2) return showErr('As senhas não conferem.');
+
+  const list = getAdmins();
+  if (list.some(a => a.user.toLowerCase() === user.toLowerCase())) return showErr('Já existe um administrador com esse usuário.');
+
+  list.push({ user: user, pwd: pwd, createdAt: new Date().toISOString() });
+  saveAdmins(list);
+  document.getElementById('modalNovoAdmin').classList.remove('show');
+  renderAdmins();
+});
+
+// Excluir admin
+document.getElementById('adminBody').addEventListener('click', function(e){
+  const del = e.target.closest('.btn-del-admin');
+  if (!del) return;
+  const u = del.dataset.user;
+  if (u === ADMIN_USER) return; // não exclui root
+  if (!confirm('Excluir o administrador "'+u+'"?\nEle não poderá mais acessar o painel.')) return;
+  const list = getAdmins().filter(a => a.user !== u);
+  saveAdmins(list);
+  renderAdmins();
+});
+
+/* ============ TAB CADASTRO ============ */
+// Enumera todos os cadastros salvos como fgvCadastro_<cpf>
+function getCadastros(){
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if (k && k.indexOf('fgvCadastro_') === 0){
+      try {
+        const d = JSON.parse(localStorage.getItem(k) || '{}');
+        d.__cpfKey = k.substring('fgvCadastro_'.length);
+        out.push(d);
+      } catch(_e){}
+    }
+  }
+  return out;
+}
+
+function renderCadastros(){
+  const q = (document.getElementById('cadSearch').value || '').toLowerCase().trim();
+  const all = getCadastros();
+  const filtered = all.filter(c => {
+    if (!q) return true;
+    const txt = ((c.nome||'')+' '+(c.cpf||'')+' '+(c.email||'')).toLowerCase();
+    return txt.indexOf(q) !== -1;
+  });
+
+  document.getElementById('cadCount').textContent = filtered.length.toLocaleString('pt-BR');
+
+  const body = document.getElementById('cadBody');
+  const empty = document.getElementById('cadEmpty');
+  if (filtered.length === 0){
+    body.innerHTML = ''; empty.classList.remove('hide'); return;
+  }
+  empty.classList.add('hide');
+
+  // Mais recentes primeiro
+  filtered.sort((a,b)=> (b.__createdAt||'').localeCompare(a.__createdAt||''));
+
+  body.innerHTML = filtered.map(c => {
+    const dt = c.__createdAt ? new Date(c.__createdAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    return '<tr data-cpf="'+c.__cpfKey+'">'+
+      '<td><div style="font-weight:700;color:#0f172a;">'+(c.nome||'—')+'</div></td>'+
+      '<td><span class="badge purple">'+(c.cpf||'—')+'</span></td>'+
+      '<td style="color:#475569;">'+(c.email||'—')+'</td>'+
+      '<td><span class="badge purple">'+(c.senha||'—')+'</span></td>'+
+      '<td style="color:#475569;">'+dt+'</td>'+
+      '<td class="right">'+
+        '<button class="btn-exibir-cad" data-cpf="'+c.__cpfKey+'" style="background:#fff;border:1px solid #e5e7eb;color:#1d4ed8;font-weight:700;padding:7px 16px;border-radius:8px;cursor:pointer;margin-right:5px;">Exibir</button>'+
+        '<button class="btn-del-cad" data-cpf="'+c.__cpfKey+'" title="Excluir cadastro" style="background:#fff;border:1px solid #e5e7eb;color:#dc2626;padding:7px 9px;border-radius:8px;cursor:pointer;">🗑️</button>'+
+      '</td></tr>';
+  }).join('');
+}
+
+// Reutiliza modal Detalhes do candidato (mesmo do Inscrições)
+function abrirDetalhesCadastro(cpfKey){
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem('fgvCadastro_'+cpfKey) || 'null'); } catch(_e){}
+  if (!c){ alert('Cadastro não encontrado'); return; }
+  // Verifica se há inscrição vinculada
+  const inscs = getInscricoes().filter(i => String(i.cpf||'').replace(/\D/g,'') === cpfKey);
+  const merged = { ...c };
+  if (c.__createdAt) merged.__createdAt = new Date(c.__createdAt).toLocaleString('pt-BR');
+
+  // Monta corpo do modal (mesmo estilo de Inscrições, sem o grupo Inscrição)
+  const grupos = DETALHES_GRUPOS.filter(g => g.titulo !== 'Dados da Inscrição');
+  const body = document.getElementById('detalhesBody');
+  let html = grupos.map(g => _renderGroup(g.titulo, g.icon, g.get(merged))).join('');
+
+  // Bloco extra: status do cadastro + inscrições vinculadas
+  html += '<div style="margin-bottom:22px;"><h4 style="font-size:13px;font-weight:800;letter-spacing:1px;color:#1d4ed8;text-transform:uppercase;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:14px;">Atividade no Portal</h4>'+
+    '<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;">CADASTRO CRIADO EM</div>'+
+    '<div style="font-size:14px;color:#0f172a;margin-top:3px;">'+(merged.__createdAt||'—')+'</div></div>'+
+    '<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;">INSCRIÇÕES FINALIZADAS</div>'+
+    '<div style="font-size:14px;color:#0f172a;margin-top:3px;">'+
+      (inscs.length === 0
+        ? '<span style="color:#dc2626;font-weight:600;">Nenhuma inscrição finalizada</span>'
+        : inscs.map(i => '<div style="margin-bottom:4px;">• <strong>'+i.numero+'</strong> <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;margin-left:6px;">'+(i.status||'—')+'</span></div>').join('')
+      )+
+    '</div></div></div>';
+
+  body.innerHTML = html;
+  document.getElementById('modalDetalhes').classList.add('show');
+}
+
+document.getElementById('cadSearch').addEventListener('input', renderCadastros);
+document.getElementById('btnAtualizarCad').addEventListener('click', function(){
+  withButtonSpinner('btnAtualizarCad', async function(){ await syncFromBackend(); renderCadastros(); });
+});
+
+document.getElementById('cadBody').addEventListener('click', async function(e){
+  const exibir = e.target.closest('.btn-exibir-cad');
+  if (exibir){ abrirDetalhesCadastro(exibir.dataset.cpf); return; }
+  const del = e.target.closest('.btn-del-cad');
+  if (del){
+    const cpfKey = del.dataset.cpf;
+    if (!confirm('Excluir este cadastro? Esta ação não pode ser desfeita.\n(As inscrições vinculadas continuam aparecendo na aba Inscrições.)')) return;
+    localStorage.removeItem('fgvCadastro_'+cpfKey);
+    try { if (window.DonasAPI) await window.DonasAPI.deleteCadastro(cpfKey); } catch(_e){}
+    await syncFromBackend();
+    renderCadastros();
+  }
+});
+
+document.getElementById('btnLimparCad').addEventListener('click', async function(){
+  if (!confirm('Tem certeza que deseja LIMPAR TODOS os cadastros?\nEssa ação não pode ser desfeita.')) return;
+  if (!confirm('Confirma novamente? Vai apagar TUDO (cadastros, NÃO mexe nas inscrições).')) return;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if (k && k.indexOf('fgvCadastro_') === 0) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  try { if (window.DonasAPI) await window.DonasAPI.clearCadastros(); } catch(_e){}
+  await syncFromBackend();
+  renderCadastros();
+  alert('Cadastros limpos com sucesso. ('+keys.length+' removidos)');
+});
+
+document.getElementById('btnBaixarCad').addEventListener('click', function(){
+  const all = getCadastros();
+  if (all.length === 0){ alert('Não há cadastros para baixar.'); return; }
+
+  const linhas = [];
+  linhas.push('====================================================================');
+  linhas.push('  DONAS PAINEL — RELATÓRIO DE CADASTROS');
+  linhas.push('  Gerado em: ' + new Date().toLocaleString('pt-BR'));
+  linhas.push('  Total de cadastros: ' + all.length);
+  linhas.push('====================================================================');
+  linhas.push('');
+
+  const grupos = DETALHES_GRUPOS.filter(g => g.titulo !== 'Dados da Inscrição');
+  all.sort((a,b)=> (b.__createdAt||'').localeCompare(a.__createdAt||'')).forEach((c, idx) => {
+    linhas.push('--------------------------------------------------------------------');
+    linhas.push('  CADASTRO #' + (idx+1) + ' — ' + (c.nome || c.candidato || '—'));
+    linhas.push('  CPF: ' + (c.cpf || '—'));
+    linhas.push('  Criado em: ' + (c.__createdAt ? new Date(c.__createdAt).toLocaleString('pt-BR') : '—'));
+    linhas.push('--------------------------------------------------------------------');
+
+    grupos.forEach(g => {
+      linhas.push('');
+      linhas.push('  [' + g.titulo.toUpperCase() + ']');
+      g.get(c).forEach(([l, v]) => {
+        linhas.push('    ' + l.padEnd(28, ' ') + ': ' + (v == null || v === '' ? '—' : String(v)));
+      });
+    });
+    linhas.push('');
+  });
+
+  linhas.push('====================================================================');
+  linhas.push('  FIM DO RELATÓRIO');
+  linhas.push('====================================================================');
+
+  const blob = new Blob([linhas.join('\n')], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const fname = 'cadastros_' + d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') + '_' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0') + '.txt';
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/* ============ INICIALIZAÇÃO ============ */
+if (isAuth()) showApp(); else showLogin();
+</script>
+</body>
+</html>
+e showLogin();
+</script>
+</body>
+</html>
