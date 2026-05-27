@@ -653,7 +653,7 @@
     <div class="modal-body">
       <input type="text" class="search" id="searchAcessos" placeholder="Buscar por IP, cidade, UF ou dispositivo...">
       <table class="tbl">
-        <thead><tr><th>DATA / HORA</th><th>IP</th><th>LOCALIZAÇÃO</th><th>DISPOSITIVO</th><th class="right">ACESSOS</th></tr></thead>
+        <thead><tr><th>DATA / HORA</th><th>IP</th><th>LOCALIZAÇÃO</th><th>DISPOSITIVO</th></tr></thead>
         <tbody id="tbAcessos"></tbody>
       </table>
     </div>
@@ -1092,22 +1092,16 @@ function renderAcessos(log, q){
   );
   const tb = document.getElementById('tbAcessos');
   if (filtered.length === 0){
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">Nenhum acesso registrado.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:30px;">Nenhum acesso registrado.</td></tr>';
     return;
   }
-  // Agrupa por IP+device para mostrar quantidade de acessos
-  const byIp = {};
-  filtered.forEach(a=>{
-    const k = (a.ip||'-') + '|' + (a.device||'-');
-    if(!byIp[k]) byIp[k] = { ts:a.ts, ip:a.ip, city:a.city, region:a.region, device:a.device, count:0 };
-    byIp[k].count++;
-    if (a.ts > byIp[k].ts) byIp[k].ts = a.ts;
-  });
-  const rows = Object.values(byIp).sort((a,b)=> (b.ts||'').localeCompare(a.ts||''));
+  // 1 linha = 1 acesso (sem agregação). Ordena do mais recente para o mais antigo.
+  const rows = filtered.slice().sort((a,b)=> (b.ts||'').localeCompare(a.ts||''));
   tb.innerHTML = rows.map(r=>{
     const dt = r.ts ? new Date(r.ts).toLocaleString('pt-BR') : '—';
-    const loc = (r.city || r.region) ? ((r.city||'-')+'/'+(r.region||'-')) : '—';
-    return '<tr><td>'+dt+'</td><td><a>'+(r.ip||'—')+'</a></td><td>'+loc+'</td><td><span class="badge">'+(r.device||'—').toUpperCase()+'</span></td><td class="right">'+r.count+'</td></tr>';
+    const locParts = [r.city, r.region].filter(Boolean);
+    const loc = locParts.length ? escHtml(locParts.join('/')) : '—';
+    return '<tr><td>'+dt+'</td><td><a>'+escHtml(r.ip||'—')+'</a></td><td>'+loc+'</td><td><span class="badge">'+escHtml((r.device||'—').toUpperCase())+'</span></td></tr>';
   }).join('');
 }
 document.getElementById('closeModalAcessos').addEventListener('click', ()=>document.getElementById('modalAcessos').classList.remove('show'));

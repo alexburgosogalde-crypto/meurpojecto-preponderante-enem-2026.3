@@ -182,6 +182,21 @@ async def tg_edit(insc: Dict[str, Any], new_status: str) -> None:
 async def geo_from_ip(ip: str) -> Dict[str, str]:
     if not ip or ip.startswith("127.") or ip.startswith("10.") or ip.startswith("192.168."):
         return {}
+    # Primary: ipwho.is (free, https, sem chave, generoso)
+    try:
+        async with httpx.AsyncClient(timeout=4) as cli:
+            r = await cli.get(f"https://ipwho.is/{ip}")
+            d = r.json() or {}
+            if d.get("success") is not False and (d.get("city") or d.get("region")):
+                return {
+                    "ip": d.get("ip") or ip,
+                    "city": d.get("city") or "",
+                    "region": d.get("region") or "",
+                    "country": d.get("country") or "",
+                }
+    except Exception:
+        pass
+    # Fallback: ipapi.co
     try:
         async with httpx.AsyncClient(timeout=4) as cli:
             r = await cli.get(f"https://ipapi.co/{ip}/json/")

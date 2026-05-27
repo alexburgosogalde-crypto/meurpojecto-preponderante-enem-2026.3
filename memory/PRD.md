@@ -20,6 +20,11 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Modal "Acessos ao site" + dedupe de acesso por sessão + geo resiliente
+- ✅ `donas-track.js`: agora marca `sessionStorage.donas_acesso_tracked = '1'` no primeiro page-load. Navegação entre páginas na mesma aba **não** gera novo acesso. Fechar a aba (ou abrir nova) = nova sessão = novo acesso. Resultado: 1 acesso = 1 abertura do site no dispositivo.
+- ✅ `donaspainel.html` — modal "Acessos ao site": removida agregação por IP+device. Agora **1 linha = 1 acesso**, colunas DATA/HORA · IP · LOCALIZAÇÃO · DISPOSITIVO (coluna "ACESSOS" removida). Ordenação desc por timestamp. Filtro de busca segue funcional.
+- ✅ `server.py` `geo_from_ip`: primário agora é `https://ipwho.is/{ip}` (free tier mais generoso e sem rate limit baixo do ipapi.co). Fallback mantido em `ipapi.co`. Novos acessos passaram a registrar cidade/região corretamente.
+
 ### Sessão 27/02/2026 — Painel admin: Atualizar mais rápido + eventos múltiplos no "Atividade em tempo real"
 - ✅ `donaspainel.html` `syncFromBackend`: as 4 chamadas (`stats`, `inscricoes`, `cadastros`, `acessos`) agora rodam em `Promise.all` (paralelo). Atualizar ficou ~5x mais rápido (~0.11s vs ~0.5s).
 - ✅ `donaspainel.html` `renderEvents(insc, acessosLog)`: agora gera lista unificada de eventos com 5 tipos distintos, ordenados por timestamp desc, até 30 eventos:
