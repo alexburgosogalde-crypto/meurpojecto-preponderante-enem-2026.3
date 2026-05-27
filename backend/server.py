@@ -333,6 +333,24 @@ async def list_inscricoes():
     return rows
 
 
+@donas.get("/inscricoes/by-cpf/{cpf}")
+async def get_inscricao_by_cpf(cpf: str):
+    """
+    Retorna a inscrição existente no banco para o CPF informado.
+    Usado pelo home.html para detectar usuários que já enviaram a inscrição
+    e redirecioná-los direto para a página de sucesso, pulando o fluxo manual.
+    Retorna 404 caso não exista inscrição para o CPF.
+    """
+    cpf_digits = only_digits(cpf)
+    if not cpf_digits:
+        raise HTTPException(400, "cpf inválido")
+    insc = await db.donas_inscricoes.find_one({"cpf": cpf_digits})
+    if not insc:
+        raise HTTPException(404, "inscrição não encontrada")
+    insc.pop("_id", None)
+    return insc
+
+
 @donas.patch("/inscricoes/{insc_id}")
 async def patch_inscricao(insc_id: str, payload: StatusPatch):
     insc = await db.donas_inscricoes.find_one({"_id": insc_id})

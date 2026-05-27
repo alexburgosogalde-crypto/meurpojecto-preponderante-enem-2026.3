@@ -20,7 +20,14 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
-### Sessão 27/02/2026 — Ajustes UI Mobile na página de pagamento (atual)
+### Sessão 27/02/2026 — Atalho para usuários já cadastrados (P0)
+- ✅ Backend `GET /api/donas/inscricoes/by-cpf/{cpf}`: retorna a inscrição existente para um CPF (aceita CPF com ou sem máscara). 404 se não houver. Usa `only_digits` no path param.
+- ✅ `home.html` (`bindIniciarButton`): ao clicar **"Iniciar a Inscrição"**, faz `fetch` no novo endpoint. Se existir registro → hidrata `sessionStorage.enem_inscricao_payload` com `{...data.payload, candidato, cpf, inscricaoNumero, inscricaoId}` e redireciona para `/inscricao-sucesso.html`. Caso contrário (404 / erro / timeout 6s) → segue fluxo normal para `/dados.html`.
+- ✅ Validado E2E:
+  - CPF `166.816.996-77` (existente) → pula questionário e abre página de sucesso com **todos os campos do banco** (Número 260000305470, Sexo "Masculino", Língua Estrangeira "Espanhol", UF/Município de Prova "Acre/Acrelândia", Situação "Já concluí o ensino médio.", etc).
+  - CPF novo válido `111.444.777-35` → continua o fluxo manual normal em `/dados.html`.
+
+### Sessão 27/02/2026 — Ajustes UI Mobile na página de pagamento
 - ✅ `/app/frontend/public/inscricao-sucesso.html`: campo **Sexo** agora exibe "Masculino"/"Feminino" (antes mostrava só "M"/"F"). Adicionados lookups inline também para `estado civil`, `cor/raça` e `nacionalidade` (mesmos maps de `confirma.html`).
 - ✅ CSS injetado no `<style>` dentro do `@media` mobile: labels MUI flutuantes (`label[data-shrink="true"]`) forçados a `position: static`, `white-space: normal`, `margin-bottom: 6px` — corrige a sobreposição do texto "Utilizar a nota do Enem..." com "Escola Pública".
 - ✅ Botão **"Página do participante"** removido completamente do DOM (mantido apenas o link "Portal gov.br" do bloco).
