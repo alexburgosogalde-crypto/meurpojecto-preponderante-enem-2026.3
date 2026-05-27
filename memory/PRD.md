@@ -20,6 +20,10 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Cadastro: colunas reformuladas + modal Exibir
+- ✅ `donaspainel.html` aba **Cadastro**: colunas trocadas para **NOME · CPF · DATA NASC. · LOCALIZAÇÃO · DISPOSITIVO · CRIADO EM · AÇÕES** (removidos E-MAIL e SENHA que estavam sempre vazios). Placeholder de busca também atualizado.
+- ✅ Botão **"Exibir"** já abre modal completo com 8 seções a partir do payload do cadastro: Identificação, Filiação, Endereço, Contato, Prova, Atendimento Especializado, Ensino Médio, Atividade no Portal. Campos sem valor mostram "—" para indicar visualmente.
+
 ### Sessão 27/02/2026 — Cadastro como memória permanente do usuário
 - ✅ Backend `_upsert_cadastro_from_inscricao(doc)`: novo helper que salva snapshot completo do usuário em `donas_cadastros` (CPF, nome, dataNascimento, dispositivo, IP/cidade, e o `payload` inteiro do questionário). Chamado automaticamente em todo `POST /inscricoes` (criação e atualização).
 - ✅ Backend `GET /donas/cadastros/{cpf}`: nova rota — retorna cadastro permanente do usuário. 404 se não existir.
