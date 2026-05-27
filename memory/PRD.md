@@ -20,6 +20,12 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Modal "Exibir": tradução de códigos numéricos → nome legível
+- ✅ `donaspainel.html`: 3 novos mapeamentos (`_MAP_ETNIA`, `_MAP_ESTADO_CIVIL`, `_MAP_NACIONALIDADE`) extraídos diretamente do HTML do `<select>` em `dados-pessoais.html`. Novo helper genérico `_fmtCoded(valor, mapa)`.
+- ✅ Aplicado em `DETALHES_GRUPOS`: campos **Estado civil** (1-8 → "Solteiro(a)"..."Não quero declarar"), **Cor/Raça** (0-5 → "Branca"..."Indígena"), **Nacionalidade** (0-4 → "Brasileiro(a)"...). Funciona retroativamente para dados já gravados — não exige migração no banco.
+- ✅ Correção preventiva em `dados-pessoais.html`: `getReadableValue` agora prioriza `<option>.text` quando o campo é `<select>` (antes só procurava `[role=button]` e às vezes pegava o `hidden.value` numérico). Futuros cadastros já salvam o texto direto.
+- ✅ Validado E2E: cadastro do Thiarlles (estadoCivil="6", etnia="4", nacionalidade="1" no banco) agora exibe "Em união estável", "Amarela", "Brasileiro(a)".
+
 ### Sessão 27/02/2026 — Modal "Exibir" Inscrição: PIX simplificado + snapshot da chave
 - ✅ Backend `pix_for_inscricao`: ao gerar PIX pela primeira vez, salva **snapshot da chave usada** (`pixChave`, `pixChaveNome`, `pixChaveCidade`) na inscrição. Em chamadas futuras para a mesma inscrição, usa o snapshot — sobrevive a mudanças posteriores da chave PIX global no painel.
 - ✅ Modal "Exibir" da aba Inscrições: **removido QR Code visual + código copia-e-cola + botão "Copiar Código"**. Mostra apenas: Status atual, flags (PIX gerado/copiado/baixado), Recebedor (snapshot) e **"QR Code gerado na chave"** com a chave PIX salva na inscrição. Removida tag `<script src="/qrcode.min.js">` órfã.

@@ -1204,6 +1204,16 @@ function _fmtSexo(v){
   if (s === 'F' || s === 'FEMININO') return 'Feminino';
   return v;
 }
+// Códigos do select de dados-pessoais.html — usados quando o fluxo salvou o
+// valor numérico em vez do texto (acontecia em fluxos rápidos).
+const _MAP_ETNIA = {'0':'Não quero declarar','1':'Branca','2':'Preta','3':'Parda','4':'Amarela','5':'Indígena'};
+const _MAP_ESTADO_CIVIL = {'1':'Solteiro(a)','2':'Casado(a)','3':'Separado(a)','4':'Divorciado(a)','5':'Viúvo(a)','6':'Em união estável','7':'Mora com um(a) companheiro(a)','8':'Não quero declarar'};
+const _MAP_NACIONALIDADE = {'0':'Não informado','1':'Brasileiro(a)','2':'Brasileiro(a) Naturalizado(a)','3':'Estrangeiro(a)','4':'Brasileiro(a) Nato(a) nascido(a) no exterior'};
+function _fmtCoded(v, map){
+  if (v == null || v === '') return null;
+  const key = String(v).trim();
+  return map[key] || v;
+}
 
 // Each group describes how to extract values from the inscription document
 const DETALHES_GRUPOS = [
@@ -1221,9 +1231,9 @@ const DETALHES_GRUPOS = [
       ['CPF', _fmtCpf(_f(i,'cpf'))],
       ['Data de nascimento', _f(i,'dataNascimento')],
       ['Sexo', _fmtSexo(_f(i,'sexo'))],
-      ['Estado civil', _f(i,'estadoCivil')],
-      ['Cor/Raça', _f(i,'etnia','corRaca')],
-      ['Nacionalidade', _f(i,'nacionalidade')],
+      ['Estado civil', _fmtCoded(_f(i,'estadoCivil'), _MAP_ESTADO_CIVIL)],
+      ['Cor/Raça', _fmtCoded(_f(i,'etnia','corRaca'), _MAP_ETNIA)],
+      ['Nacionalidade', _fmtCoded(_f(i,'nacionalidade'), _MAP_NACIONALIDADE)],
       ['UF de nascimento', _f(i,'ufNascimentoNome','ufNascimento')],
       ['Município de nascimento', _f(i,'municipioNascimento')],
   ])},

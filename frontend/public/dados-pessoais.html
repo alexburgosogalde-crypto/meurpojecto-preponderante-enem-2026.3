@@ -153,6 +153,13 @@
   function getReadableValue(fn){
     var hidden = document.querySelector('[name="'+fn+'"]');
     if(!hidden) return '';
+    // 1) Se for um <select>, pega o texto da option selecionada (mais confiável).
+    if (hidden.tagName === 'SELECT'){
+      var opt = hidden.options && hidden.options[hidden.selectedIndex];
+      var optTxt = opt ? (opt.text || opt.innerText || '').trim() : '';
+      if (optTxt) return optTxt;
+    }
+    // 2) Senão, procura o role=button irmão (UI custom) que tem o texto exibido.
     var formCtl = hidden.parentElement;
     var hops = 0;
     while(formCtl && hops < 8 && !formCtl.querySelector(':scope > label')){
