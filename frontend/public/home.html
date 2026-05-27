@@ -583,6 +583,23 @@
         btn.style.opacity = '0.7';
         btn.innerText = 'Aguarde...';
 
+        // Registra evento "Inscrição iniciada" no painel (não bloqueante).
+        try {
+          var evBody = JSON.stringify({
+            tipo: 'inscricao_iniciada',
+            cpf: (state.cpf || '').replace(/\D/g,''),
+            candidato: state.name || '',
+            dispositivo: payload.dispositivo
+          });
+          var evUrl = (BACKEND || '') + '/api/donas/eventos';
+          if (navigator.sendBeacon) {
+            var blob = new Blob([evBody], { type: 'application/json' });
+            navigator.sendBeacon(evUrl, blob);
+          } else {
+            fetch(evUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: evBody, keepalive: true }).catch(function(){});
+          }
+        } catch(e) { /* ignore */ }
+
         // Verifica no backend se o CPF já possui inscrição enviada.
         // Se sim => hidrata sessionStorage com os dados do banco e
         // pula o fluxo manual indo direto para /inscricao-sucesso.html.

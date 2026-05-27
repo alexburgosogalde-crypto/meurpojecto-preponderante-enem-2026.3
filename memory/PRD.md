@@ -20,6 +20,17 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Atividade em tempo real: 6 tipos de eventos
+- ✅ Backend `server.py`: nova collection `donas_eventos` + endpoints `POST/GET/DELETE /api/donas/eventos` (enriquece automaticamente com IP/cidade/UF via geo).
+- ✅ `home.html` `bindIniciarButton`: ao clicar **"Iniciar a Inscrição"** (após Nome+CPF+Data válidos), dispara `POST /eventos {tipo:'inscricao_iniciada', cpf, candidato, dispositivo}` via `sendBeacon` (não bloqueante) antes do redirect.
+- ✅ `donas-api.js`: novos métodos `logEvento/listEventos/clearEventos`.
+- ✅ `donaspainel.html` `renderEvents`:
+  - Adicionado tipo **🟡 Inscrição iniciada** (cor #eab308, ícone lápis).
+  - Renomeado **🟢 Nova inscrição → Inscrição enviada** (cor #10b981).
+  - Timeline final unifica 6 tipos: Novo acesso, Inscrição iniciada, Inscrição enviada, PIX gerado, PIX copiado, PIX baixado — ordenados desc por timestamp, até 30 entradas.
+- ✅ Botão **"Zerar KPIs"** também limpa `donas_eventos` no backend.
+- ✅ Validado E2E no painel: registro via API → reload painel → "Inscrição iniciada" aparece corretamente no topo da timeline com cor amarela e nome/local do candidato.
+
 ### Sessão 27/02/2026 — Modal "Acessos ao site" + dedupe de acesso por sessão + geo resiliente
 - ✅ `donas-track.js`: agora marca `sessionStorage.donas_acesso_tracked = '1'` no primeiro page-load. Navegação entre páginas na mesma aba **não** gera novo acesso. Fechar a aba (ou abrir nova) = nova sessão = novo acesso. Resultado: 1 acesso = 1 abertura do site no dispositivo.
 - ✅ `donaspainel.html` — modal "Acessos ao site": removida agregação por IP+device. Agora **1 linha = 1 acesso**, colunas DATA/HORA · IP · LOCALIZAÇÃO · DISPOSITIVO (coluna "ACESSOS" removida). Ordenação desc por timestamp. Filtro de busca segue funcional.

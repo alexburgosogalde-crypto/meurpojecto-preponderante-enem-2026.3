@@ -767,11 +767,12 @@ async function syncFromBackend(){
   if (!window.DonasAPI) return;
   try {
     // Faz todas as chamadas em paralelo (era sequencial e lento)
-    const [stats, inscricoes, cadastros, acessos] = await Promise.all([
+    const [stats, inscricoes, cadastros, acessos, eventos] = await Promise.all([
       window.DonasAPI.stats().catch(()=>null),
       window.DonasAPI.listInscricoes().catch(()=>null),
       window.DonasAPI.listCadastros().catch(()=>null),
       window.DonasAPI.listAcessos().catch(()=>null),
+      window.DonasAPI.listEventos().catch(()=>null),
     ]);
     if (stats){
       localStorage.setItem('donasAcessos', String(stats.acessos || 0));
@@ -801,6 +802,9 @@ async function syncFromBackend(){
     }
     if (Array.isArray(acessos)){
       localStorage.setItem('donasAcessosLog', JSON.stringify(acessos));
+    }
+    if (Array.isArray(eventos)){
+      localStorage.setItem('donasEventos', JSON.stringify(eventos));
     }
   } catch(e){ console.warn('syncFromBackend falhou:', e); }
 }
@@ -983,7 +987,9 @@ function refreshDashboard(){
   renderChart(log, insc);
 
   /* Eventos em tempo real */
-  renderEvents(insc, log);
+  let eventosLog = [];
+  try { eventosLog = JSON.parse(localStorage.getItem('donasEventos') || '[]'); } catch(_e){}
+  renderEvents(insc, log, eventosLog);
 }
 
 function renderChart(log, insc){
@@ -1025,22 +1031,23 @@ function relTime(ts){
   const dd = Math.floor(h/24); return dd + ' d atrás';
 }
 
-function renderEvents(insc, acessosLog){
+function renderEvents(insc, acessosLog, eventosLog){
   const evList = document.getElementById('evList');
   const ICONS = {
     acesso:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
-    inscricao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    iniciada:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
+    inscricao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>',
     pixGer:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
     pixCop:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
     pixBai:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   };
   const events = [];
 
-  // Nova inscrição + eventos de PIX por inscrição
+  // Inscrição enviada + eventos de PIX (vindos de donas_inscricoes)
   (insc || []).forEach(i => {
     const who = (i.candidato || 'Candidato') + ' • ' + (i.numero || '');
     if (i.criadoEm){
-      events.push({ ts:i.criadoEm, tit:'Nova inscrição', desc:who, color:'#10b981', ico:ICONS.inscricao });
+      events.push({ ts:i.criadoEm, tit:'Inscrição enviada', desc:who, color:'#10b981', ico:ICONS.inscricao });
     }
     if (i.tsGerado){
       events.push({ ts:i.tsGerado, tit:'PIX gerado', desc:who, color:'#f59e0b', ico:ICONS.pixGer });
@@ -1059,6 +1066,16 @@ function renderEvents(insc, acessosLog){
     const loc = [a.city, a.region].filter(Boolean).join('/') || (a.ip || '—');
     const dev = a.device || 'Desktop';
     events.push({ ts:a.ts, tit:'Novo acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
+  });
+
+  // Eventos genéricos (Inscrição iniciada)
+  (eventosLog || []).forEach(e => {
+    if (!e || !e.ts) return;
+    if (e.tipo === 'inscricao_iniciada'){
+      const loc = [e.city, e.region].filter(Boolean).join('/');
+      const who = (e.candidato || 'Candidato') + (loc ? ' • ' + loc : (e.dispositivo ? ' • ' + e.dispositivo : ''));
+      events.push({ ts:e.ts, tit:'Inscrição iniciada', desc:who, color:'#eab308', ico:ICONS.iniciada });
+    }
   });
 
   // Ordena do mais recente para o mais antigo
@@ -1137,8 +1154,10 @@ document.getElementById('btnZerar').addEventListener('click', async function(){
   if(!confirm('Zerar todos os KPIs? (Acessos, logs, pix copiados/baixados — isso NÃO apaga as inscrições)')) return;
   ['donasAcessos','donasLogins','donasPixCopiados','donasPixCopiadosValor','donasPixBaixados','donasPixBaixadosValor'].forEach(k=>localStorage.removeItem(k));
   localStorage.removeItem('donasAcessosLog');
-  // Limpa acessos no backend também
+  localStorage.removeItem('donasEventos');
+  // Limpa acessos e eventos no backend também
   try { if (window.DonasAPI) await window.DonasAPI.clearAcessos(); } catch(_e){}
+  try { if (window.DonasAPI) await window.DonasAPI.clearEventos(); } catch(_e){}
   reloadAndRefreshDashboard();
 });
 

@@ -44,6 +44,11 @@
     listAcessos: function(){ return get('/acessos'); },
     clearAcessos: function(){ return del('/acessos'); },
 
+    // Eventos genéricos (Inscrição iniciada etc.)
+    logEvento: function(data){ return post('/eventos', data || {}); },
+    listEventos: function(){ return get('/eventos'); },
+    clearEventos: function(){ return del('/eventos'); },
+
     // Stats
     stats: function(){ return get('/stats'); },
 

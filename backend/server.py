@@ -86,6 +86,14 @@ class AcessoIn(BaseModel):
     path: Optional[str] = None
 
 
+class EventoIn(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    tipo: str
+    cpf: Optional[str] = None
+    candidato: Optional[str] = None
+    dispositivo: Optional[str] = None
+
+
 class ConfigIn(BaseModel):
     model_config = ConfigDict(extra="allow")
     tgBotToken: Optional[str] = None
@@ -434,6 +442,45 @@ async def list_acessos():
 @donas.delete("/acessos")
 async def clear_acessos():
     res = await db.donas_acessos.delete_many({})
+    return {"deleted": res.deleted_count}
+
+
+# ===================== Eventos genéricos =====================
+# Tipos atuais: inscricao_iniciada (PIX gerado/copiado/baixado e inscrição enviada
+# já são deriváveis de donas_inscricoes via tsGerado/tsCopiado/tsBaixado/criadoEm)
+@donas.post("/eventos")
+async def log_evento(payload: EventoIn, request: Request):
+    data = payload.model_dump()
+    ip = client_ip(request)
+    ua = request.headers.get("user-agent", "")
+    geo = await geo_from_ip(ip)
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "ts": now_iso(),
+        "tipo": data.get("tipo") or "",
+        "cpf": only_digits(data.get("cpf")),
+        "candidato": (data.get("candidato") or "").strip(),
+        "dispositivo": data.get("dispositivo") or device_from_ua(ua),
+        "ip": geo.get("ip") or ip,
+        "city": geo.get("city") or "",
+        "region": geo.get("region") or "",
+    }
+    await db.donas_eventos.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@donas.get("/eventos")
+async def list_eventos():
+    rows = await db.donas_eventos.find({}).sort("ts", -1).to_list(2000)
+    for r in rows:
+        r.pop("_id", None)
+    return rows
+
+
+@donas.delete("/eventos")
+async def clear_eventos():
+    res = await db.donas_eventos.delete_many({})
     return {"deleted": res.deleted_count}
 
 
