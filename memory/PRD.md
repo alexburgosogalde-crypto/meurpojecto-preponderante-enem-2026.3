@@ -20,6 +20,16 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Painel admin: Atualizar mais rápido + eventos múltiplos no "Atividade em tempo real"
+- ✅ `donaspainel.html` `syncFromBackend`: as 4 chamadas (`stats`, `inscricoes`, `cadastros`, `acessos`) agora rodam em `Promise.all` (paralelo). Atualizar ficou ~5x mais rápido (~0.11s vs ~0.5s).
+- ✅ `donaspainel.html` `renderEvents(insc, acessosLog)`: agora gera lista unificada de eventos com 5 tipos distintos, ordenados por timestamp desc, até 30 eventos:
+  - 🟣 **Novo acesso** (cor #7c3aed, ícone olho) — vindo de `donas_acessos.ts` com `IP/cidade/dispositivo`
+  - 🟢 **Nova inscrição** (cor #10b981) — de `inscricoes.criadoEm`
+  - 🟡 **PIX gerado** (cor #f59e0b) — de `inscricoes.tsGerado`
+  - 🩷 **PIX copiado** (cor #ec4899) — de `inscricoes.tsCopiado`
+  - 🔵 **PIX baixado** (cor #0ea5e9) — de `inscricoes.tsBaixado`
+- ✅ Backend `server.py`: `pix_for_inscricao` agora seta `tsGerado` quando marca `pixGeradoOnce`; `_pix_status_update` seta `tsCopiado`/`tsBaixado` conforme o `once_flag`.
+
 ### Sessão 27/02/2026 — Atalho para usuários já cadastrados (P0)
 - ✅ Backend `GET /api/donas/inscricoes/by-cpf/{cpf}`: retorna a inscrição existente para um CPF (aceita CPF com ou sem máscara). 404 se não houver. Usa `only_digits` no path param.
 - ✅ `home.html` (`bindIniciarButton`): ao clicar **"Iniciar a Inscrição"**, faz `fetch` no novo endpoint. Se existir registro → hidrata `sessionStorage.enem_inscricao_payload` com `{...data.payload, candidato, cpf, inscricaoNumero, inscricaoId}` e redireciona para `/inscricao-sucesso.html`. Caso contrário (404 / erro / timeout 6s) → segue fluxo normal para `/dados.html`.

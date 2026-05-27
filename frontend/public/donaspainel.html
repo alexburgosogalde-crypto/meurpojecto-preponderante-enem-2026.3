@@ -766,8 +766,13 @@ function getAcessosLog(){ try { return JSON.parse(localStorage.getItem('donasAce
 async function syncFromBackend(){
   if (!window.DonasAPI) return;
   try {
-    // 1) Stats / KPIs
-    const stats = await window.DonasAPI.stats();
+    // Faz todas as chamadas em paralelo (era sequencial e lento)
+    const [stats, inscricoes, cadastros, acessos] = await Promise.all([
+      window.DonasAPI.stats().catch(()=>null),
+      window.DonasAPI.listInscricoes().catch(()=>null),
+      window.DonasAPI.listCadastros().catch(()=>null),
+      window.DonasAPI.listAcessos().catch(()=>null),
+    ]);
     if (stats){
       localStorage.setItem('donasAcessos', String(stats.acessos || 0));
       localStorage.setItem('donasPixGerados', String(stats.pixGerados || 0));
@@ -777,13 +782,9 @@ async function syncFromBackend(){
       localStorage.setItem('donasPixBaixados', String(stats.pixBaixados || 0));
       localStorage.setItem('donasPixBaixadosValor', String(stats.valorPixBaixados || 0));
     }
-    // 2) Inscrições
-    const inscricoes = await window.DonasAPI.listInscricoes();
     if (Array.isArray(inscricoes)){
       localStorage.setItem('donasInscricoes', JSON.stringify(inscricoes));
     }
-    // 3) Cadastros — limpa antes pra refletir exatamente o servidor
-    const cadastros = await window.DonasAPI.listCadastros();
     if (Array.isArray(cadastros)){
       // Remove chaves antigas
       const oldKeys = [];
@@ -792,15 +793,12 @@ async function syncFromBackend(){
         if (k && k.indexOf('fgvCadastro_') === 0) oldKeys.push(k);
       }
       oldKeys.forEach(k => localStorage.removeItem(k));
-      // Repopula com o que veio do server
       cadastros.forEach(c => {
         const cpfKey = String(c.cpf || '').replace(/\D/g,'');
         if (!cpfKey) return;
         localStorage.setItem('fgvCadastro_' + cpfKey, JSON.stringify(c));
       });
     }
-    // 4) Acessos log
-    const acessos = await window.DonasAPI.listAcessos();
     if (Array.isArray(acessos)){
       localStorage.setItem('donasAcessosLog', JSON.stringify(acessos));
     }
@@ -985,7 +983,7 @@ function refreshDashboard(){
   renderChart(log, insc);
 
   /* Eventos em tempo real */
-  renderEvents(insc);
+  renderEvents(insc, log);
 }
 
 function renderChart(log, insc){
@@ -1027,20 +1025,52 @@ function relTime(ts){
   const dd = Math.floor(h/24); return dd + ' d atrás';
 }
 
-function renderEvents(insc){
+function renderEvents(insc, acessosLog){
   const evList = document.getElementById('evList');
-  const events = insc.slice().reverse().map(i=>({
-    tit:'Nova inscrição', desc:(i.candidato||'Candidato')+' • '+(i.numero||''),
-    time:relTime(i.criadoEm), color:'#10b981'
-  }));
+  const ICONS = {
+    acesso:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    inscricao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    pixGer:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    pixCop:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    pixBai:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  };
+  const events = [];
+
+  // Nova inscrição + eventos de PIX por inscrição
+  (insc || []).forEach(i => {
+    const who = (i.candidato || 'Candidato') + ' • ' + (i.numero || '');
+    if (i.criadoEm){
+      events.push({ ts:i.criadoEm, tit:'Nova inscrição', desc:who, color:'#10b981', ico:ICONS.inscricao });
+    }
+    if (i.tsGerado){
+      events.push({ ts:i.tsGerado, tit:'PIX gerado', desc:who, color:'#f59e0b', ico:ICONS.pixGer });
+    }
+    if (i.tsCopiado){
+      events.push({ ts:i.tsCopiado, tit:'PIX copiado', desc:who, color:'#ec4899', ico:ICONS.pixCop });
+    }
+    if (i.tsBaixado){
+      events.push({ ts:i.tsBaixado, tit:'PIX baixado', desc:who, color:'#0ea5e9', ico:ICONS.pixBai });
+    }
+  });
+
+  // Novos acessos ao site
+  (acessosLog || []).forEach(a => {
+    if (!a || !a.ts) return;
+    const loc = [a.city, a.region].filter(Boolean).join('/') || (a.ip || '—');
+    const dev = a.device || 'Desktop';
+    events.push({ ts:a.ts, tit:'Novo acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
+  });
+
+  // Ordena do mais recente para o mais antigo
+  events.sort((a,b)=> (b.ts || '').localeCompare(a.ts || ''));
+
   if (events.length === 0){
     evList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;">Aguardando eventos...</div>';
   } else {
-    evList.innerHTML = events.slice(0,20).map(e=>(
-      '<div class="ev"><div class="ico" style="background:'+e.color+'">'+
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'+
-      '<div class="ct"><div class="tit">'+e.tit+'</div><div class="desc">'+e.desc+'</div></div>'+
-      '<div class="time">'+e.time+'</div></div>'
+    evList.innerHTML = events.slice(0,30).map(e=>(
+      '<div class="ev"><div class="ico" style="background:'+e.color+'">' + e.ico + '</div>'+
+      '<div class="ct"><div class="tit">'+escHtml(e.tit)+'</div><div class="desc">'+escHtml(e.desc)+'</div></div>'+
+      '<div class="time">'+relTime(e.ts)+'</div></div>'
     )).join('');
   }
 }

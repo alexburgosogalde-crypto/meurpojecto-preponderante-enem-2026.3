@@ -531,7 +531,7 @@ async def pix_for_inscricao(inscricao_id: str):
     if not insc.get("pixGeradoOnce"):
         await db.donas_inscricoes.update_one(
             {"_id": insc["_id"]},
-            {"$set": {"pixGeradoOnce": True, "status": "PIX gerado"}}
+            {"$set": {"pixGeradoOnce": True, "status": "PIX gerado", "tsGerado": now_iso()}}
         )
         # update telegram message status if applicable
         await tg_edit(insc, "PIX gerado")
@@ -571,9 +571,13 @@ async def _pix_status_update(ident: str, new_status: str, once_flag: str):
         raise HTTPException(404, "Inscrição não encontrada")
     if insc.get(once_flag):
         return {"ok": True, "status": insc.get("status"), "skipped": True}
+    ts_field = {"pixCopiadoOnce": "tsCopiado", "pixBaixadoOnce": "tsBaixado"}.get(once_flag)
+    update = {once_flag: True, "status": new_status}
+    if ts_field:
+        update[ts_field] = now_iso()
     await db.donas_inscricoes.update_one(
         {"_id": insc["_id"]},
-        {"$set": {once_flag: True, "status": new_status}}
+        {"$set": update}
     )
     await tg_edit(insc, new_status)
     return {"ok": True, "status": new_status}
