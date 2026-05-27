@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="/qrcode.min.js"></script>
 <script src="/donas-api.js" defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -1290,14 +1289,12 @@ function _renderQuestionario(_insc){
   return '';
 }
 
-async function _renderPix(insc){
-  if (!insc.pixGeradoOnce && !/PIX/i.test(insc.status||'')) return null;
-  let pix = null;
-  try {
-    const r = await fetch('/api/donas/pix/' + encodeURIComponent(insc.numero));
-    if (r.ok) pix = await r.json();
-  } catch(_e){}
-  if (!pix) return null;
+function _renderPix(insc){
+  // Mostra só se o PIX foi efetivamente gerado para essa inscrição.
+  if (!insc.pixGeradoOnce && !insc.pixChave) return '';
+  const chave = insc.pixChave || '—';
+  const recebedor = insc.pixChaveNome || '';
+  const cidade = insc.pixChaveCidade || '';
   const flags = [
     ['Status atual', insc.status || '—', '#1d4ed8'],
     ['PIX gerado', insc.pixGeradoOnce ? 'Sim' : 'Não', insc.pixGeradoOnce ? '#10b981' : '#94a3b8'],
@@ -1307,49 +1304,20 @@ async function _renderPix(insc){
   const flagsHtml = flags.map(([l,v,c]) =>
     `<div><div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">${l}</div>
      <div style="font-size:14px;color:${c};font-weight:700;margin-top:2px;">${v}</div></div>`).join('');
-  const html = `<div style="margin-bottom:24px;">
+  const recHtml = recebedor
+    ? `<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">Recebedor (snapshot)</div><div style="font-size:13px;color:#475569;margin-top:2px;">${escHtml(recebedor)}${cidade ? ' · ' + escHtml(cidade) : ''}</div></div>`
+    : '';
+  return `<div style="margin-bottom:24px;">
     <h4 style="font-size:13px;font-weight:800;letter-spacing:1px;color:#1d4ed8;text-transform:uppercase;border-bottom:1.5px solid #e5e7eb;padding-bottom:6px;margin-bottom:14px;">
       <span style="margin-right:6px;">💰</span>Pagamento PIX
     </h4>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px;">${flagsHtml}</div>
-    <div style="display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:start;">
-      <div id="detalhesPixQr" style="width:200px;height:200px;background:#fff;border:1px solid #e0e3e8;border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;"></div>
-      <div>
-        <div style="margin-bottom:10px;">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">Recebedor</div>
-          <div style="font-size:13px;color:#0f172a;margin-top:2px;">${pix.recebedor||'—'} · ${pix.cidade||'—'}</div>
-        </div>
-        <div style="margin-bottom:10px;">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;">Valor</div>
-          <div style="font-size:18px;color:#dc2626;margin-top:2px;font-weight:700;">${pix.valorFmt}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">Código PIX Copia e Cola</div>
-          <div id="detalhesPixCode" style="background:#f5f7fa;border:1px solid #d8dde3;border-radius:4px;padding:10px 12px;font-family:monospace;font-size:11px;line-height:1.5;color:#1c1c1c;word-break:break-all;max-height:110px;overflow:auto;user-select:all;">${pix.brcode}</div>
-          <button id="detalhesPixCopy" style="margin-top:8px;background:#1351b4;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📋 Copiar Código</button>
-        </div>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:18px;">${flagsHtml}</div>
+    ${recHtml}
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">QR Code gerado na chave</div>
+      <div style="background:#f5f7fa;border:1px solid #d8dde3;border-radius:6px;padding:11px 14px;font-family:monospace;font-size:13px;color:#0f172a;font-weight:600;word-break:break-all;user-select:all;">${escHtml(chave)}</div>
     </div>
   </div>`;
-  return { html: html, brcode: pix.brcode };
-}
-
-function _activatePixSection(brcode){
-  // Render QR code from the loaded library
-  const box = document.getElementById('detalhesPixQr');
-  if (box && typeof QRCode !== 'undefined'){
-    box.innerHTML = '';
-    try { new QRCode(box, { text: brcode, width: 184, height: 184, correctLevel: QRCode.CorrectLevel.M }); } catch(_e){}
-  }
-  const btn = document.getElementById('detalhesPixCopy');
-  if (btn){
-    btn.onclick = function(){
-      if (navigator.clipboard) navigator.clipboard.writeText(brcode);
-      else { const ta=document.createElement('textarea'); ta.value=brcode; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
-      btn.innerText = '✅ Copiado!';
-      setTimeout(()=>{ btn.innerText = '📋 Copiar Código'; }, 1500);
-    };
-  }
 }
 
 function getInscricoesEnriquecidas(){
@@ -1414,29 +1382,15 @@ function renderInscricoes(){
   }).join('');
 }
 
-async function abrirDetalhes(numero){
+function abrirDetalhes(numero){
   const all = getInscricoesEnriquecidas();
   const i = all.find(x => x.numero === numero);
   if (!i){ alert('Inscrição não encontrada'); return; }
   const body = document.getElementById('detalhesBody');
-
-  // Render header + groups synchronously, then append PIX section asynchronously
   body.innerHTML = DETALHES_GRUPOS.map(g => _renderGroup(g.titulo, g.icon, g.get(i))).join('')
                  + _renderQuestionario(i)
-                 + '<div id="detalhesPixSlot"><div style="color:#94a3b8;font-size:13px;text-align:center;padding:18px;">Carregando dados do PIX…</div></div>';
+                 + _renderPix(i);
   document.getElementById('modalDetalhes').classList.add('show');
-
-  // Async PIX section
-  const pixData = await _renderPix(i);
-  const slot = document.getElementById('detalhesPixSlot');
-  if (slot){
-    if (pixData){
-      slot.innerHTML = pixData.html;
-      _activatePixSection(pixData.brcode);
-    } else {
-      slot.innerHTML = '';
-    }
-  }
 }
 
 document.getElementById('closeDetalhes').addEventListener('click', ()=>document.getElementById('modalDetalhes').classList.remove('show'));

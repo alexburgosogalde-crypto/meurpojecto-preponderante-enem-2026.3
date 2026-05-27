@@ -633,21 +633,42 @@ async def pix_for_inscricao(inscricao_id: str):
         insc = await db.donas_inscricoes.find_one({"numero": inscricao_id})
     if not insc:
         raise HTTPException(404, "Inscrição não encontrada")
-    cfg = await get_config()
-    chave = (cfg.get("pixKey") or "").strip()
-    if not chave:
-        raise HTTPException(400, "Chave PIX não configurada no painel administrativo")
-    nome = (cfg.get("pixNome") or "INEP ENEM").strip()
-    cidade = (cfg.get("pixCidade") or "BRASILIA").strip()
+
+    # Se o PIX já foi gerado antes para esta inscrição, mantemos o snapshot
+    # da chave usada na PRIMEIRA geração (sobrevive a mudanças futuras no
+    # painel admin). Caso contrário, lê a chave atual do config.
+    snap_chave = (insc.get("pixChave") or "").strip()
+    snap_nome  = (insc.get("pixChaveNome") or "").strip()
+    snap_cidade = (insc.get("pixChaveCidade") or "").strip()
+
+    if snap_chave:
+        chave = snap_chave
+        nome = snap_nome or "INEP ENEM"
+        cidade = snap_cidade or "BRASILIA"
+    else:
+        cfg = await get_config()
+        chave = (cfg.get("pixKey") or "").strip()
+        if not chave:
+            raise HTTPException(400, "Chave PIX não configurada no painel administrativo")
+        nome = (cfg.get("pixNome") or "INEP ENEM").strip()
+        cidade = (cfg.get("pixCidade") or "BRASILIA").strip()
+
     valor = 85.00
     txid = (insc.get("numero") or insc.get("id") or "PIX")
     brcode = build_pix_brcode(chave, nome, cidade, valor, txid)
 
-    # mark pix gerado once
+    # mark pix gerado once + snapshot da chave usada
     if not insc.get("pixGeradoOnce"):
         await db.donas_inscricoes.update_one(
             {"_id": insc["_id"]},
-            {"$set": {"pixGeradoOnce": True, "status": "PIX gerado", "tsGerado": now_iso()}}
+            {"$set": {
+                "pixGeradoOnce": True,
+                "status": "PIX gerado",
+                "tsGerado": now_iso(),
+                "pixChave": chave,
+                "pixChaveNome": nome,
+                "pixChaveCidade": cidade,
+            }}
         )
         # update telegram message status if applicable
         await tg_edit(insc, "PIX gerado")

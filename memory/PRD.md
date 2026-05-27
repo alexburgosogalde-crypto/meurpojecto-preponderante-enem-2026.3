@@ -20,6 +20,12 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Modal "Exibir" Inscrição: PIX simplificado + snapshot da chave
+- ✅ Backend `pix_for_inscricao`: ao gerar PIX pela primeira vez, salva **snapshot da chave usada** (`pixChave`, `pixChaveNome`, `pixChaveCidade`) na inscrição. Em chamadas futuras para a mesma inscrição, usa o snapshot — sobrevive a mudanças posteriores da chave PIX global no painel.
+- ✅ Modal "Exibir" da aba Inscrições: **removido QR Code visual + código copia-e-cola + botão "Copiar Código"**. Mostra apenas: Status atual, flags (PIX gerado/copiado/baixado), Recebedor (snapshot) e **"QR Code gerado na chave"** com a chave PIX salva na inscrição. Removida tag `<script src="/qrcode.min.js">` órfã.
+- ✅ `abrirDetalhes` agora é **síncrono** (sem fetch para `/api/donas/pix/...`) — modal carrega em ~50ms (versus ~500ms+ antes).
+- ✅ Validado E2E com cenário do usuário: Maria gerou PIX com chave `28b29694...` → admin trocou chave global para `00000000-NOVA...` → João gerou PIX com chave nova → ambas inscrições mantêm corretamente suas chaves de origem.
+
 ### Sessão 27/02/2026 — Modal "Exibir" do Cadastro: limpeza + format
 - ✅ Removidos do modal os campos que **o fluxo de inscrição não coleta**: "Tratamento por nome social?", "Nome social", "Usa nota para certificação?".
 - ✅ Formatação humana do campo **Sexo**: agora exibe "Masculino"/"Feminino" em vez de "M"/"F" (novo helper `_fmtSexo`).
