@@ -57,6 +57,10 @@
       'body{opacity:0 !important;} .css-b5weg2{display:none !important;}'+
       // Force MUI label to float up when we set data-shrink=true (Nome do Pai etc.)
       'label[data-shrink="true"]{transform:translate(0, 1.5px) scale(0.75) !important;transform-origin:top left !important;}'+
+      // Fix: on mobile, allow long multi-line labels to wrap and stack above input
+      '@media (max-width: 820px){'+
+        'label[data-shrink="true"]{position:static !important;transform:none !important;white-space:normal !important;line-height:1.25 !important;font-size:.78rem !important;color:rgba(0,0,0,0.6) !important;display:block !important;margin-bottom:6px !important;pointer-events:none !important;width:100% !important;max-width:100% !important;}'+
+      '}'+
       // Confirmation checkboxes — turn green when checked
       '.donas-confirm-wrap{cursor:pointer;}'+
       '.donas-confirm-wrap .css-128kxe7{transition:background .2s,border-color .2s;}'+
