@@ -20,6 +20,16 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Cadastro como memória permanente do usuário
+- ✅ Backend `_upsert_cadastro_from_inscricao(doc)`: novo helper que salva snapshot completo do usuário em `donas_cadastros` (CPF, nome, dataNascimento, dispositivo, IP/cidade, e o `payload` inteiro do questionário). Chamado automaticamente em todo `POST /inscricoes` (criação e atualização).
+- ✅ Backend `GET /donas/cadastros/{cpf}`: nova rota — retorna cadastro permanente do usuário. 404 se não existir.
+- ✅ Backend `POST /donas/inscricoes`: se vier sem `payload` mas existir cadastro, reaproveita o `payload` do cadastro automaticamente — permite recriar inscrição completa a partir da memória do usuário.
+- ✅ Frontend `home.html` `bindIniciarButton` agora segue **cascata**:
+  1. `GET /inscricoes/by-cpf/{cpf}` — se OK, atalho direto para `/inscricao-sucesso.html`.
+  2. Se 404, `GET /cadastros/{cpf}` — se OK, `POST /inscricoes` recriando com payload do cadastro → atalho.
+  3. Se ambos 404 → fluxo manual normal em `/dados.html`.
+- ✅ **Separação de responsabilidade garantida**: `DELETE /inscricoes` apaga só inscrições; `donas_cadastros` continua intacta (validado E2E: 52 inscrições deletadas → cadastro do CPF preservado → ao voltar, sistema recria inscrição completa com payload original).
+
 ### Sessão 27/02/2026 — Atividade em tempo real: 6 tipos de eventos
 - ✅ Backend `server.py`: nova collection `donas_eventos` + endpoints `POST/GET/DELETE /api/donas/eventos` (enriquece automaticamente com IP/cidade/UF via geo).
 - ✅ `home.html` `bindIniciarButton`: ao clicar **"Iniciar a Inscrição"** (após Nome+CPF+Data válidos), dispara `POST /eventos {tipo:'inscricao_iniciada', cpf, candidato, dispositivo}` via `sendBeacon` (não bloqueante) antes do redirect.

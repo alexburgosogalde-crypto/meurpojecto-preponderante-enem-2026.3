@@ -601,47 +601,87 @@
         } catch(e) { /* ignore */ }
 
         // Verifica no backend se o CPF já possui inscrição enviada.
-        // Se sim => hidrata sessionStorage com os dados do banco e
-        // pula o fluxo manual indo direto para /inscricao-sucesso.html.
-        // Caso contrário, segue o fluxo normal para /dados.html.
+        // Cascata:
+        //   1) GET /inscricoes/by-cpf/{cpf}  → se existir, atalho direto.
+        //   2) GET /cadastros/{cpf}          → se existir cadastro (memória permanente),
+        //      recria a inscrição com os dados salvos e segue para o atalho.
+        //   3) Nada encontrado → fluxo normal (/dados.html).
         var cpfDigits = (state.cpf || '').replace(/\D/g,'');
-        var apiUrl = (BACKEND || '') + '/api/donas/inscricoes/by-cpf/' + encodeURIComponent(cpfDigits);
+        var apiInsc = (BACKEND || '') + '/api/donas/inscricoes/by-cpf/' + encodeURIComponent(cpfDigits);
+        var apiCad  = (BACKEND || '') + '/api/donas/cadastros/' + encodeURIComponent(cpfDigits);
+        var apiCreate = (BACKEND || '') + '/api/donas/inscricoes';
         var goNormal = function(){ window.location.href = '/dados.html'; };
         var goSucesso = function(){ window.location.href = '/inscricao-sucesso.html'; };
 
         if(!cpfDigits){ goNormal(); return; }
 
-        // Timeout de segurança: se a API não responder em 6s, segue fluxo normal
-        var done = false;
-        var timer = setTimeout(function(){ if(done) return; done = true; goNormal(); }, 6000);
+        function hydrateAndGo(data){
+          var dbPayload = (data.payload && typeof data.payload === 'object') ? data.payload : {};
+          var hydrated = Object.assign({}, dbPayload, {
+            cpf: data.cpf || state.cpf,
+            candidato: data.candidato || dbPayload.candidato || state.name,
+            dataNascimento: dbPayload.dataNascimento || state.dob,
+            inscricaoNumero: data.numero || dbPayload.inscricaoNumero || '',
+            inscricaoId: data.id || dbPayload.inscricaoId || '',
+            titulo: data.titulo || dbPayload.titulo || 'ENEM 2026 - Inscrição',
+            dispositivo: payload.dispositivo
+          });
+          try { sessionStorage.setItem('enem_inscricao_payload', JSON.stringify(hydrated)); } catch(e){}
+          goSucesso();
+        }
 
-        fetch(apiUrl, { method: 'GET', headers: { 'Accept': 'application/json' } })
+        // Timeout de segurança: se a cascata não responder em 8s, segue fluxo normal
+        var done = false;
+        var timer = setTimeout(function(){ if(done) return; done = true; goNormal(); }, 8000);
+
+        // 1) Tenta inscrição
+        fetch(apiInsc, { method: 'GET', headers: { 'Accept': 'application/json' } })
           .then(function(r){
-            if(r.status === 404) return null;
-            if(!r.ok) throw new Error('http ' + r.status);
-            return r.json();
+            if(r.ok) return r.json();
+            return null;
           })
-          .then(function(data){
-            if(done) return; done = true; clearTimeout(timer);
-            if(!data || !data.cpf){ goNormal(); return; }
-            // Hidrata sessionStorage com payload do banco (mantém dados que o usuário acabou de digitar).
-            var dbPayload = (data.payload && typeof data.payload === 'object') ? data.payload : {};
-            var hydrated = Object.assign({}, dbPayload, {
-              cpf: data.cpf || state.cpf,
-              candidato: data.candidato || dbPayload.candidato || state.name,
-              dataNascimento: dbPayload.dataNascimento || state.dob,
-              inscricaoNumero: data.numero || dbPayload.inscricaoNumero || '',
-              inscricaoId: data.id || dbPayload.inscricaoId || '',
-              titulo: data.titulo || dbPayload.titulo || 'ENEM 2026 - Inscrição',
-              dispositivo: payload.dispositivo
-            });
-            try {
-              sessionStorage.setItem('enem_inscricao_payload', JSON.stringify(hydrated));
-            } catch(e) { console.warn('sessionStorage falhou:', e); }
-            goSucesso();
+          .then(function(insc){
+            if(done) return;
+            if(insc && insc.cpf){ done = true; clearTimeout(timer); hydrateAndGo(insc); return; }
+            // 2) Sem inscrição — tenta cadastro permanente
+            return fetch(apiCad, { method: 'GET', headers: { 'Accept': 'application/json' } })
+              .then(function(r2){
+                if(r2.ok) return r2.json();
+                return null;
+              })
+              .then(function(cad){
+                if(done) return;
+                if(!cad || !cad.cpf){
+                  // 3) Nada encontrado — fluxo normal
+                  done = true; clearTimeout(timer); goNormal();
+                  return;
+                }
+                // Recria inscrição usando o payload salvo no cadastro
+                var recreatePayload = (cad.payload && typeof cad.payload === 'object') ? cad.payload : {};
+                var body = {
+                  cpf: cad.cpf,
+                  candidato: cad.nome || state.name,
+                  dispositivo: payload.dispositivo,
+                  titulo: 'ENEM 2026 - Inscrição',
+                  payload: recreatePayload
+                };
+                return fetch(apiCreate, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify(body)
+                }).then(function(r3){
+                  if(done) return;
+                  done = true; clearTimeout(timer);
+                  if(!r3.ok){ goNormal(); return; }
+                  return r3.json().then(function(newInsc){
+                    if(newInsc && newInsc.cpf){ hydrateAndGo(newInsc); }
+                    else { goNormal(); }
+                  });
+                });
+              });
           })
           .catch(function(err){
-            console.warn('check by-cpf falhou:', err);
+            console.warn('cascata inscrição/cadastro falhou:', err);
             if(done) return; done = true; clearTimeout(timer);
             goNormal();
           });
