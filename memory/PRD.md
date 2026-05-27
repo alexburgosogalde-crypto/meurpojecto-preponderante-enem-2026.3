@@ -20,7 +20,19 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
-### Sessão 25/05/2026 — Final do Questionário (atual)
+### Sessão 27/02/2026 — Ajustes UI Mobile na página de pagamento (atual)
+- ✅ `/app/frontend/public/inscricao-sucesso.html`: campo **Sexo** agora exibe "Masculino"/"Feminino" (antes mostrava só "M"/"F"). Adicionados lookups inline também para `estado civil`, `cor/raça` e `nacionalidade` (mesmos maps de `confirma.html`).
+- ✅ CSS injetado no `<style>` dentro do `@media` mobile: labels MUI flutuantes (`label[data-shrink="true"]`) forçados a `position: static`, `white-space: normal`, `margin-bottom: 6px` — corrige a sobreposição do texto "Utilizar a nota do Enem..." com "Escola Pública".
+- ✅ Botão **"Página do participante"** removido completamente do DOM (mantido apenas o link "Portal gov.br" do bloco).
+- ✅ Link **"Participar"** (Conselho de Usuários) removido completamente do DOM.
+- ✅ Botão **"Saiba mais"** mantido, mas sem `href` / `target` / `rel` — clique não navega mais (validado via JS: `_saiba_href: (removed)`).
+
+### Sessão 26/05/2026 — Ajustes UI Mobile na página de confirmação
+- ✅ `home.html`: ocultado botão "Sair" (`.mobile-power-btn`) apenas no mobile, preservado nas demais páginas.
+- ✅ `confirma.html`: mapas de código → label para Sexo, Raça, Estado Civil e Nacionalidade.
+- ✅ `confirma.html`: CSS override para labels MUI evitando sobreposição em mobile.
+
+### Sessão 25/05/2026 — Final do Questionário
 - ✅ Adicionadas Q21, Q22 e Q23 ao array `QUESTIONS` em `/app/frontend/public/questionario.html` (total 23/23)
   - Q21: "Em sua casa, existe computador/notebook?" (5 opções)
   - Q22: "Incluindo você, as pessoas com quem você mora têm telefone celular?" (5 opções)
