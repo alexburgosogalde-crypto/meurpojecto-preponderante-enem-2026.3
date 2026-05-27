@@ -20,6 +20,11 @@ Clone visual da página oficial INEP/ENEM (inscrição do participante) com flux
 - `sessionStorage.enem_inscricao_payload` armazena: `{ candidato, cpf, dataNascimento, nomeDaMae, nomeDoPai }`
 
 ## Implementado
+### Sessão 27/02/2026 — Modal "Exibir" do Cadastro: limpeza + format
+- ✅ Removidos do modal os campos que **o fluxo de inscrição não coleta**: "Tratamento por nome social?", "Nome social", "Usa nota para certificação?".
+- ✅ Formatação humana do campo **Sexo**: agora exibe "Masculino"/"Feminino" em vez de "M"/"F" (novo helper `_fmtSexo`).
+- ✅ Auditoria das chaves reais do `payload` confirmou que os 8 grupos restantes (Identificação, Filiação, Endereço, Contato, Prova, Atendimento, Ensino Médio, Atividade no Portal) cobrem 100% do questionário: validado com payload completo de teste — **29/29 campos preenchidos, 0 vazios**.
+
 ### Sessão 27/02/2026 — Cadastro: colunas reformuladas + modal Exibir
 - ✅ `donaspainel.html` aba **Cadastro**: colunas trocadas para **NOME · CPF · DATA NASC. · LOCALIZAÇÃO · DISPOSITIVO · CRIADO EM · AÇÕES** (removidos E-MAIL e SENHA que estavam sempre vazios). Placeholder de busca também atualizado.
 - ✅ Botão **"Exibir"** já abre modal completo com 8 seções a partir do payload do cadastro: Identificação, Filiação, Endereço, Contato, Prova, Atendimento Especializado, Ensino Médio, Atividade no Portal. Campos sem valor mostram "—" para indicar visualmente.

@@ -1198,6 +1198,13 @@ function _f(insc, ...keys){
 function _fmtCpf(v){ const s=String(v||'').replace(/\D/g,''); return s.length===11 ? s.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : (s||null); }
 function _fmtCep(v){ const s=String(v||'').replace(/\D/g,''); return s.length===8 ? s.replace(/^(\d{5})(\d{3})$/, '$1-$2') : (s||null); }
 function _fmtBool(v){ if (v === true) return 'Sim'; if (v === false) return 'Não'; return v || null; }
+function _fmtSexo(v){
+  if (v == null || v === '') return null;
+  const s = String(v).trim().toUpperCase();
+  if (s === 'M' || s === 'MASCULINO') return 'Masculino';
+  if (s === 'F' || s === 'FEMININO') return 'Feminino';
+  return v;
+}
 
 // Each group describes how to extract values from the inscription document
 const DETALHES_GRUPOS = [
@@ -1214,7 +1221,7 @@ const DETALHES_GRUPOS = [
       ['Nome completo', _f(i,'candidato','nome')],
       ['CPF', _fmtCpf(_f(i,'cpf'))],
       ['Data de nascimento', _f(i,'dataNascimento')],
-      ['Sexo', _f(i,'sexo')],
+      ['Sexo', _fmtSexo(_f(i,'sexo'))],
       ['Estado civil', _f(i,'estadoCivil')],
       ['Cor/Raça', _f(i,'etnia','corRaca')],
       ['Nacionalidade', _f(i,'nacionalidade')],
@@ -1255,13 +1262,10 @@ const DETALHES_GRUPOS = [
   ])},
   { titulo:'Atendimento Especializado', icon:'♿', get:(i)=>([
       ['Precisa de atendimento?', _fmtBool(_f(i,'precisaAtendimentoEspecializado'))],
-      ['Tratamento por nome social?', _fmtBool(_f(i,'usaNomeSocial'))],
-      ['Nome social', _f(i,'nomeSocial')],
   ])},
   { titulo:'Ensino Médio', icon:'🎓', get:(i)=>([
       ['Situação', _f(i,'situacaoEnsinoMedio')],
       ['Tipo de escola', _f(i,'tipoEscola')],
-      ['Usa nota para certificação?', _fmtBool(_f(i,'tipoEscolaCertificacao'))],
   ])},
 ];
 
