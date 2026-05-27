@@ -105,6 +105,41 @@
     return v.toString();
   }
 
+  // Code -> readable label maps (must match dados-pessoais.html select options)
+  var SEXO_MAP = { 'M': 'Masculino', 'F': 'Feminino' };
+  var ETNIA_MAP = {
+    '0': 'Não quero declarar',
+    '1': 'Branca',
+    '2': 'Preta',
+    '3': 'Parda',
+    '4': 'Amarela',
+    '5': 'Indígena'
+  };
+  var ESTADO_CIVIL_MAP = {
+    '1': 'Solteiro(a)',
+    '2': 'Casado(a)',
+    '3': 'Separado(a)',
+    '4': 'Divorciado(a)',
+    '5': 'Viúvo(a)',
+    '6': 'Em união estável',
+    '7': 'Mora com um(a) companheiro(a)',
+    '8': 'Não quero declarar'
+  };
+  var NACIONALIDADE_MAP = {
+    '0': 'Não informado',
+    '1': 'Brasileiro(a)',
+    '2': 'Brasileiro(a) Naturalizado(a)',
+    '3': 'Estrangeiro(a)',
+    '4': 'Brasileiro(a) Nato(a) nascido(a) no exterior'
+  };
+  function lookup(map, val){
+    if(val === undefined || val === null || val === '') return '';
+    var key = String(val).trim();
+    if(map[key]) return map[key];
+    // If already a readable label (not a numeric code / single letter), return as-is
+    return key;
+  }
+
   // Map of label-text -> resolver(payload)
   var END = p.endereco || {};
   var MAP = {
@@ -112,10 +147,10 @@
     'nome do participante': p.candidato || '',
     'nome da mãe': p.nomeDaMae || '',
     'nome do pai': p.naoDeclararPais ? '' : (p.nomeDoPai || ''),
-    'sexo': p.sexo || '',
-    'estado civil': p.estadoCivil || '',
-    'cor/raça': p.etnia || p.corRaca || '',
-    'nacionalidade': p.nacionalidade || '',
+    'sexo': lookup(SEXO_MAP, p.sexo || ''),
+    'estado civil': lookup(ESTADO_CIVIL_MAP, p.estadoCivil || ''),
+    'cor/raça': lookup(ETNIA_MAP, p.etnia || p.corRaca || ''),
+    'nacionalidade': lookup(NACIONALIDADE_MAP, p.nacionalidade || ''),
     'uf nascimento': p.ufNascimentoNome || p.ufNascimento || '',
     'município de nascimento': p.municipioNascimento || '',
     'cep': fmtCep(p.cep || ''),
