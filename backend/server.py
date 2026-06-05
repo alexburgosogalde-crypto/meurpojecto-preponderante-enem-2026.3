@@ -255,7 +255,7 @@ async def upsert_cadastro(payload: CadastroIn):
 
 @donas.get("/cadastros")
 async def list_cadastros():
-    rows = await db.donas_cadastros.find({}).to_list(2000)
+    rows = await db.donas_cadastros.find({}).to_list(50000)
     for r in rows:
         r["cpf"] = r.pop("_id", r.get("cpf"))
     return rows
@@ -404,7 +404,7 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
 
 @donas.get("/inscricoes")
 async def list_inscricoes():
-    rows = await db.donas_inscricoes.find({}).sort("criadoEm", -1).to_list(2000)
+    rows = await db.donas_inscricoes.find({}).sort("criadoEm", -1).to_list(50000)
     for r in rows:
         r.pop("_id", None)
     return rows
@@ -487,7 +487,7 @@ async def log_acesso(payload: AcessoIn, request: Request):
 
 @donas.get("/acessos")
 async def list_acessos():
-    rows = await db.donas_acessos.find({}).sort("ts", -1).to_list(2000)
+    rows = await db.donas_acessos.find({}).sort("ts", -1).to_list(50000)
     for r in rows:
         r.pop("_id", None)
     return rows
@@ -526,7 +526,7 @@ async def log_evento(payload: EventoIn, request: Request):
 
 @donas.get("/eventos")
 async def list_eventos():
-    rows = await db.donas_eventos.find({}).sort("ts", -1).to_list(2000)
+    rows = await db.donas_eventos.find({}).sort("ts", -1).to_list(50000)
     for r in rows:
         r.pop("_id", None)
     return rows
