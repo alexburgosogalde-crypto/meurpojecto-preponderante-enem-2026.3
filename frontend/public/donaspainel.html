@@ -447,6 +447,7 @@
           <tbody id="inscBody"></tbody>
         </table>
         <div id="inscEmpty" class="hide" style="text-align:center;padding:40px;color:#94a3b8;">Nenhuma inscrição encontrada.</div>
+        <div id="inscPagination" data-testid="insc-pagination" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;flex-wrap:wrap;"></div>
       </div>
     </section>
 
@@ -1341,6 +1342,9 @@ function getInscricoesEnriquecidas(){
   });
 }
 
+const INSC_PAGE_SIZE = 50;
+let _inscPage = 1;
+
 function renderInscricoes(){
   const q = (document.getElementById('inscSearch').value || '').toLowerCase().trim();
   const filtroStatus = document.getElementById('inscStatus').value || '';
@@ -1365,15 +1369,25 @@ function renderInscricoes(){
 
   const body = document.getElementById('inscBody');
   const empty = document.getElementById('inscEmpty');
+  const pagBox = document.getElementById('inscPagination');
   if (filtered.length === 0){
-    body.innerHTML = ''; empty.classList.remove('hide'); return;
+    body.innerHTML = ''; empty.classList.remove('hide');
+    if (pagBox) pagBox.innerHTML = '';
+    return;
   }
   empty.classList.add('hide');
 
   // Mais recentes primeiro
   filtered.sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
 
-  body.innerHTML = filtered.map(i => {
+  // Paginação client-side: 50 por página
+  const totalPages = Math.max(1, Math.ceil(filtered.length / INSC_PAGE_SIZE));
+  if (_inscPage > totalPages) _inscPage = totalPages;
+  if (_inscPage < 1) _inscPage = 1;
+  const start = (_inscPage - 1) * INSC_PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + INSC_PAGE_SIZE);
+
+  body.innerHTML = pageItems.map(i => {
     const dt = i.criadoEm ? new Date(i.criadoEm).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
     const status = i.status || 'PIX gerado';
     const col = STATUS_COLOR[status] || {bg:'#f1f5f9', fg:'#475569'};
@@ -1390,6 +1404,56 @@ function renderInscricoes(){
       '<button class="btn-del-insc" data-num="'+i.numero+'" title="Excluir inscrição" style="background:#fff;border:1px solid #e5e7eb;color:#dc2626;padding:7px 9px;border-radius:8px;cursor:pointer;">🗑️</button></td>'+
       '</tr>';
   }).join('');
+
+  // Render pagination controls
+  if (pagBox){
+    pagBox.innerHTML = _renderPaginationHTML(_inscPage, totalPages, filtered.length, start, pageItems.length);
+  }
+}
+
+function _renderPaginationHTML(page, totalPages, total, start, shown){
+  const info = '<div style="color:#64748b;font-size:13px;">Mostrando <strong>'+(start+1)+'–'+(start+shown)+'</strong> de <strong>'+total.toLocaleString('pt-BR')+'</strong> inscrições</div>';
+  if (totalPages <= 1) return info;
+
+  // Gera lista de páginas com janela móvel (ex: 1 ... 4 5 [6] 7 8 ... 20)
+  const win = 2; // páginas vizinhas
+  const pages = new Set([1, totalPages, page]);
+  for (let i = page - win; i <= page + win; i++){
+    if (i >= 1 && i <= totalPages) pages.add(i);
+  }
+  const sorted = [...pages].sort((a,b)=>a-b);
+  let html = '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">';
+  html += _pgBtn('‹', page > 1, page - 1, 'Página anterior');
+  let prev = 0;
+  for (const p of sorted){
+    if (prev && p - prev > 1){
+      html += '<span style="padding:0 6px;color:#94a3b8;">…</span>';
+    }
+    html += _pgBtn(String(p), true, p, 'Página '+p, p === page);
+    prev = p;
+  }
+  html += _pgBtn('›', page < totalPages, page + 1, 'Próxima página');
+  html += '</div>';
+  return info + html;
+}
+
+function _pgBtn(label, enabled, target, title, active){
+  const base = 'min-width:34px;height:34px;padding:0 10px;border-radius:8px;font-weight:700;font-size:13px;cursor:'+(enabled?'pointer':'not-allowed')+';border:1px solid '+(active?'#7c3aed':'#e5e7eb')+';';
+  const colors = active
+    ? 'background:#7c3aed;color:#fff;'
+    : ('background:#fff;color:'+(enabled?'#1d4ed8':'#cbd5e1')+';');
+  const attr = enabled
+    ? (' data-page="'+target+'" onclick="_gotoInscPage('+target+')"')
+    : ' disabled';
+  return '<button title="'+title+'" style="'+base+colors+'"'+attr+'>'+label+'</button>';
+}
+
+function _gotoInscPage(p){
+  _inscPage = p;
+  renderInscricoes();
+  // scroll suave para o topo da tabela
+  const tbl = document.getElementById('inscBody');
+  if (tbl) tbl.closest('section, div')?.scrollIntoView({block:'start', behavior:'smooth'});
 }
 
 function abrirDetalhes(numero){
@@ -1406,8 +1470,8 @@ function abrirDetalhes(numero){
 document.getElementById('closeDetalhes').addEventListener('click', ()=>document.getElementById('modalDetalhes').classList.remove('show'));
 document.getElementById('modalDetalhes').addEventListener('click', e=>{ if(e.target.id==='modalDetalhes') document.getElementById('modalDetalhes').classList.remove('show'); });
 
-document.getElementById('inscSearch').addEventListener('input', renderInscricoes);
-document.getElementById('inscStatus').addEventListener('change', renderInscricoes);
+document.getElementById('inscSearch').addEventListener('input', function(){ _inscPage = 1; renderInscricoes(); });
+document.getElementById('inscStatus').addEventListener('change', function(){ _inscPage = 1; renderInscricoes(); });
 document.getElementById('btnAtualizarInsc').addEventListener('click', function(){
   withButtonSpinner('btnAtualizarInsc', async function(){ await syncFromBackend(); renderInscricoes(); });
 });
