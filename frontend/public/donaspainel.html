@@ -653,7 +653,10 @@
   <div class="modal-box">
     <div class="modal-head">
       <div><h3>Acessos ao site</h3><div class="sub" id="modalAcessosSub">0 visitas registradas</div></div>
-      <button class="modal-close" id="closeModalAcessos">×</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="btnLimparAcessos" data-testid="btn-limpar-acessos" style="background:#fff;border:1px solid #fecaca;color:#dc2626;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">🗑️ Limpar acessos</button>
+        <button class="modal-close" id="closeModalAcessos">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <input type="text" class="search" id="searchAcessos" placeholder="Buscar por IP, cidade, UF ou dispositivo...">
@@ -1136,6 +1139,26 @@ function renderAcessos(log, q){
   }).join('');
 }
 document.getElementById('closeModalAcessos').addEventListener('click', ()=>document.getElementById('modalAcessos').classList.remove('show'));
+document.getElementById('btnLimparAcessos').addEventListener('click', async function(){
+  if (!confirm('Tem certeza que quer apagar TODOS os registros de acessos? Esta ação não pode ser desfeita.')) return;
+  const btn = this;
+  const orig = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = '⏳ Limpando...';
+  try {
+    if (window.DonasAPI) await window.DonasAPI.clearAcessos();
+    localStorage.removeItem('donasAcessosLog');
+    btn.innerText = '✅ Limpo';
+    await reloadAndRefreshDashboard();
+    // Re-renderiza tabela do modal
+    renderAcessos([], '');
+    document.getElementById('modalAcessosSub').textContent = '0 visitas registradas';
+  } catch(e){
+    btn.innerText = '⚠️ Erro';
+  } finally {
+    setTimeout(()=>{ btn.innerText = orig; btn.disabled = false; }, 1800);
+  }
+});
 document.getElementById('modalAcessos').addEventListener('click', e=>{ if(e.target.id==='modalAcessos') document.getElementById('modalAcessos').classList.remove('show'); });
 document.getElementById('searchAcessos').addEventListener('input', e=> renderAcessos(getAcessosLog(), e.target.value));
 
