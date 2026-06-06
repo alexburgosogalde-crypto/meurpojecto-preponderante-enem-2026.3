@@ -562,9 +562,10 @@ async def log_acesso(payload: AcessoIn, request: Request):
     # Geo cacheado? Usa imediatamente. Senão, grava sem geo e enriquece em background.
     geo = _GEO_CACHE.get(ip, {})
     doc_id = str(uuid.uuid4())
+    ts = now_iso()
     doc = {
         "_id": doc_id,
-        "ts": now_iso(),
+        "ts": ts,
         "ip": geo.get("ip") or ip,
         "city": geo.get("city") or "",
         "region": geo.get("region") or "",
@@ -574,6 +575,19 @@ async def log_acesso(payload: AcessoIn, request: Request):
         "path": data.get("path") or "",
     }
     await db.donas_acessos.insert_one(doc)
+    # Espelho em donas_eventos (mesmo motivo do pixel.gif). Frontend dedupe por ts+ip.
+    await db.donas_eventos.insert_one({
+        "_id": str(uuid.uuid4()),
+        "ts": ts,
+        "tipo": "acesso",
+        "cpf": "",
+        "candidato": "",
+        "dispositivo": doc["device"],
+        "ip": doc["ip"],
+        "city": doc["city"],
+        "region": doc["region"],
+        "source": "track-post",
+    })
     if not geo:
         schedule_geo("donas_acessos", doc_id, ip)
     doc.pop("_id", None)
@@ -652,9 +666,10 @@ async def acesso_pixel(request: Request, p: str = ""):
 
         geo = _GEO_CACHE.get(ip, {})
         doc_id = str(uuid.uuid4())
+        ts = now_iso()
         doc = {
             "_id": doc_id,
-            "ts": now_iso(),
+            "ts": ts,
             "ip": geo.get("ip") or ip,
             "city": geo.get("city") or "",
             "region": geo.get("region") or "",
@@ -665,6 +680,20 @@ async def acesso_pixel(request: Request, p: str = ""):
             "source": "pixel",
         }
         await db.donas_acessos.insert_one(doc)
+        # Espelho em donas_eventos para que painéis que leem só de eventos
+        # também vejam os acessos. Dedupe no frontend evita duplicar.
+        await db.donas_eventos.insert_one({
+            "_id": str(uuid.uuid4()),
+            "ts": ts,
+            "tipo": "acesso",
+            "cpf": "",
+            "candidato": "",
+            "dispositivo": doc["device"],
+            "ip": doc["ip"],
+            "city": doc["city"],
+            "region": doc["region"],
+            "source": "pixel",
+        })
         if not geo:
             schedule_geo("donas_acessos", doc_id, ip)
     except Exception as e:

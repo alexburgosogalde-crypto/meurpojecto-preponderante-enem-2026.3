@@ -1065,21 +1065,30 @@ function renderEvents(insc, acessosLog, eventosLog){
     }
   });
 
-  // Novos acessos ao site
+  // Novos acessos ao site (vindos de donas_acessos)
+  const _acessosDedupe = new Set();
   (acessosLog || []).forEach(a => {
     if (!a || !a.ts) return;
     const loc = [a.city, a.region].filter(Boolean).join('/') || (a.ip || '—');
     const dev = a.device || 'Desktop';
     events.push({ ts:a.ts, tit:'Novo acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
+    _acessosDedupe.add((a.ts||'').slice(0,19) + '|' + (a.ip||''));
   });
 
-  // Eventos genéricos (Inscrição iniciada)
+  // Eventos genéricos (Inscrição iniciada + acesso espelhado em donas_eventos)
   (eventosLog || []).forEach(e => {
     if (!e || !e.ts) return;
     if (e.tipo === 'inscricao_iniciada'){
       const loc = [e.city, e.region].filter(Boolean).join('/');
       const who = (e.candidato || 'Candidato') + (loc ? ' • ' + loc : (e.dispositivo ? ' • ' + e.dispositivo : ''));
       events.push({ ts:e.ts, tit:'Inscrição iniciada', desc:who, color:'#eab308', ico:ICONS.iniciada });
+    } else if (e.tipo === 'acesso'){
+      // Espelho do POST /acessos / pixel.gif — só inclui se ainda não veio de acessosLog
+      const k = (e.ts||'').slice(0,19) + '|' + (e.ip||'');
+      if (_acessosDedupe.has(k)) return;
+      const loc = [e.city, e.region].filter(Boolean).join('/') || (e.ip || '—');
+      const dev = e.dispositivo || 'Desktop';
+      events.push({ ts:e.ts, tit:'Novo acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
     }
   });
 
