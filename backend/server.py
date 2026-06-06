@@ -11,6 +11,7 @@ import os
 import logging
 import uuid
 import re
+import asyncio
 import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
@@ -187,36 +188,69 @@ async def tg_edit(insc: Dict[str, Any], new_status: str) -> None:
 
 
 # ===================== Geo a partir do IP =====================
+# Cache em memória do geo lookup. Em produção, vários acessos vêm do mesmo IP
+# (residencial, mobile NAT, escola). Cachear evita estourar o rate limit do
+# provider externo e elimina o gargalo principal de POSTs sob carga.
+_GEO_CACHE: Dict[str, Dict[str, str]] = {}
+_GEO_FAIL_TS: Dict[str, float] = {}  # IPs que falharam recentemente (cooldown)
+_GEO_CACHE_MAX = 10000
+
+def _geo_cache_put(ip: str, value: Dict[str, str]) -> None:
+    if len(_GEO_CACHE) >= _GEO_CACHE_MAX:
+        # FIFO simples — remove ~20% mais antigos
+        for k in list(_GEO_CACHE.keys())[: _GEO_CACHE_MAX // 5]:
+            _GEO_CACHE.pop(k, None)
+    _GEO_CACHE[ip] = value
+
+
 async def geo_from_ip(ip: str) -> Dict[str, str]:
     if not ip or ip.startswith("127.") or ip.startswith("10.") or ip.startswith("192.168."):
         return {}
-    # Primary: ipwho.is (free, https, sem chave, generoso)
+    # Cache hit
+    if ip in _GEO_CACHE:
+        return _GEO_CACHE[ip]
+    # Cooldown de 5 min para IPs que falharam recentemente (evita travar a request principal)
+    import time as _t
+    fail_ts = _GEO_FAIL_TS.get(ip)
+    if fail_ts and (_t.time() - fail_ts) < 300:
+        return {"ip": ip}
+
+    # Primary: ipwho.is — timeout curto (2s) para nunca segurar a request por muito tempo
     try:
-        async with httpx.AsyncClient(timeout=4) as cli:
+        async with httpx.AsyncClient(timeout=2) as cli:
             r = await cli.get(f"https://ipwho.is/{ip}")
             d = r.json() or {}
             if d.get("success") is not False and (d.get("city") or d.get("region")):
-                return {
+                out = {
                     "ip": d.get("ip") or ip,
                     "city": d.get("city") or "",
                     "region": d.get("region") or "",
                     "country": d.get("country") or "",
                 }
+                _geo_cache_put(ip, out)
+                return out
     except Exception:
         pass
-    # Fallback: ipapi.co
+    # Fallback: ipapi.co (timeout ainda menor — 1.5s)
     try:
-        async with httpx.AsyncClient(timeout=4) as cli:
+        async with httpx.AsyncClient(timeout=1.5) as cli:
             r = await cli.get(f"https://ipapi.co/{ip}/json/")
             d = r.json() or {}
-            return {
+            out = {
                 "ip": d.get("ip") or ip,
                 "city": d.get("city") or "",
                 "region": d.get("region") or "",
                 "country": d.get("country_name") or "",
             }
+            if out.get("city") or out.get("region"):
+                _geo_cache_put(ip, out)
+                return out
     except Exception:
-        return {"ip": ip}
+        pass
+
+    # Ambos falharam — registra cooldown e retorna só o IP (não bloqueia a request principal)
+    _GEO_FAIL_TS[ip] = _t.time()
+    return {"ip": ip}
 
 
 def client_ip(req: Request) -> str:
@@ -224,6 +258,42 @@ def client_ip(req: Request) -> str:
     if xf:
         return xf.split(",")[0].strip()
     return (req.client.host if req.client else "") or ""
+
+
+async def _enrich_geo_bg(collection_name: str, doc_id: str, ip: str) -> None:
+    """Faz geo lookup em background e atualiza o documento.
+    Não bloqueia a resposta da API. Usa cache em memória, então repetições
+    do mesmo IP custam ~0ms."""
+    try:
+        # Se já tem no cache, atualiza imediato. Senão, faz a chamada externa.
+        geo = await geo_from_ip(ip)
+        if not geo:
+            return
+        upd = {}
+        if geo.get("city"):    upd["city"] = geo["city"]
+        if geo.get("region"):  upd["region"] = geo["region"]
+        if geo.get("country"): upd["country"] = geo["country"]
+        if geo.get("ip"):      upd["ip"] = geo["ip"]
+        if not upd:
+            return
+        coll = getattr(db, collection_name)
+        await coll.update_one({"_id": doc_id}, {"$set": upd})
+    except Exception:
+        # Falha silenciosa — registro persiste sem geo
+        pass
+
+
+def schedule_geo(collection_name: str, doc_id: str, ip: str) -> None:
+    """Dispara o enriquecimento em background sem aguardar (fire-and-forget).
+    Em caso de IP já cacheado, o trabalho será praticamente instantâneo."""
+    if not ip or ip.startswith("127.") or ip.startswith("10.") or ip.startswith("192.168."):
+        return
+    # Atalho: se já está cacheado, faz update síncrono inline (rápido)
+    if ip in _GEO_CACHE:
+        # ainda assim sai do hot path da resposta
+        asyncio.create_task(_enrich_geo_bg(collection_name, doc_id, ip))
+        return
+    asyncio.create_task(_enrich_geo_bg(collection_name, doc_id, ip))
 
 
 # ===================== Health =====================
@@ -327,7 +397,8 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
     data = payload.model_dump()
     ip = client_ip(request)
     ua = request.headers.get("user-agent", "")
-    geo = await geo_from_ip(ip)
+    # Geo cacheado? Usa imediatamente. Senão, grava sem e enriquece em background.
+    geo = _GEO_CACHE.get(ip, {})
     cpf = only_digits(data.get("cpf"))
 
     # If an inscrição already exists for this CPF, keep the same número but UPDATE
@@ -388,6 +459,10 @@ async def create_inscricao(payload: InscricaoIn, request: Request):
         "payload": data.get("payload") or {},
     }
     await db.donas_inscricoes.insert_one(doc)
+
+    # Geo lookup em background (não bloqueia a resposta)
+    if not geo:
+        schedule_geo("donas_inscricoes", insc_id, ip)
 
     # Persiste cadastro permanente (memória do usuário)
     await _upsert_cadastro_from_inscricao(doc)
@@ -468,9 +543,11 @@ async def log_acesso(payload: AcessoIn, request: Request):
     data = payload.model_dump()
     ip = client_ip(request)
     ua = request.headers.get("user-agent", "")
-    geo = await geo_from_ip(ip)
+    # Geo cacheado? Usa imediatamente. Senão, grava sem geo e enriquece em background.
+    geo = _GEO_CACHE.get(ip, {})
+    doc_id = str(uuid.uuid4())
     doc = {
-        "_id": str(uuid.uuid4()),
+        "_id": doc_id,
         "ts": now_iso(),
         "ip": geo.get("ip") or ip,
         "city": geo.get("city") or "",
@@ -481,6 +558,8 @@ async def log_acesso(payload: AcessoIn, request: Request):
         "path": data.get("path") or "",
     }
     await db.donas_acessos.insert_one(doc)
+    if not geo:
+        schedule_geo("donas_acessos", doc_id, ip)
     doc.pop("_id", None)
     return doc
 
@@ -507,9 +586,10 @@ async def log_evento(payload: EventoIn, request: Request):
     data = payload.model_dump()
     ip = client_ip(request)
     ua = request.headers.get("user-agent", "")
-    geo = await geo_from_ip(ip)
+    geo = _GEO_CACHE.get(ip, {})
+    doc_id = str(uuid.uuid4())
     doc = {
-        "_id": str(uuid.uuid4()),
+        "_id": doc_id,
         "ts": now_iso(),
         "tipo": data.get("tipo") or "",
         "cpf": only_digits(data.get("cpf")),
@@ -520,6 +600,8 @@ async def log_evento(payload: EventoIn, request: Request):
         "region": geo.get("region") or "",
     }
     await db.donas_eventos.insert_one(doc)
+    if not geo:
+        schedule_geo("donas_eventos", doc_id, ip)
     doc.pop("_id", None)
     return doc
 
