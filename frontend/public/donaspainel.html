@@ -381,8 +381,13 @@
         </div>
 
         <div class="panel">
-          <h3>Top localizações</h3>
-          <div class="ph-sub">De onde vêm os visitantes</div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+            <div>
+              <h3>Top localizações</h3>
+              <div class="ph-sub">De onde vêm os visitantes</div>
+            </div>
+            <button id="btnBackfillGeo" data-testid="btn-backfill-geo" title="Reprocessar localizações dos acessos sem cidade" style="background:#fff;border:1px solid #e5e7eb;color:#1d4ed8;font-weight:700;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">↻ Resolver</button>
+          </div>
           <div id="locList"></div>
         </div>
       </div>
@@ -394,6 +399,7 @@
         </div>
         <div class="panel">
           <div class="head-row"><div><h3>Atividade em tempo real</h3><div class="ph-sub">Últimos eventos no portal</div></div><div class="live-badge">AO VIVO</div></div>
+          <div id="evFilters" style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px;"></div>
           <div class="ev-list" id="evList"></div>
         </div>
       </div>
@@ -1031,6 +1037,9 @@ function relTime(ts){
   const dd = Math.floor(h/24); return dd + ' d atrás';
 }
 
+// Filtro ativo dos eventos em tempo real ('all' | 'acesso' | 'iniciada' | 'enviada' | 'pix')
+let _evFilter = 'all';
+
 function renderEvents(insc, acessosLog, eventosLog){
   const evList = document.getElementById('evList');
   const ICONS = {
@@ -1047,16 +1056,16 @@ function renderEvents(insc, acessosLog, eventosLog){
   (insc || []).forEach(i => {
     const who = (i.candidato || 'Candidato') + ' • ' + (i.numero || '');
     if (i.criadoEm){
-      events.push({ ts:i.criadoEm, tit:'Inscrição enviada', desc:who, color:'#10b981', ico:ICONS.inscricao });
+      events.push({ ts:i.criadoEm, tit:'Inscrição enviada', kind:'enviada', desc:who, color:'#10b981', ico:ICONS.inscricao });
     }
     if (i.tsGerado){
-      events.push({ ts:i.tsGerado, tit:'PIX gerado', desc:who, color:'#f59e0b', ico:ICONS.pixGer });
+      events.push({ ts:i.tsGerado, tit:'PIX gerado', kind:'pix', desc:who, color:'#f59e0b', ico:ICONS.pixGer });
     }
     if (i.tsCopiado){
-      events.push({ ts:i.tsCopiado, tit:'PIX copiado', desc:who, color:'#ec4899', ico:ICONS.pixCop });
+      events.push({ ts:i.tsCopiado, tit:'PIX copiado', kind:'pix', desc:who, color:'#ec4899', ico:ICONS.pixCop });
     }
     if (i.tsBaixado){
-      events.push({ ts:i.tsBaixado, tit:'PIX baixado', desc:who, color:'#0ea5e9', ico:ICONS.pixBai });
+      events.push({ ts:i.tsBaixado, tit:'PIX baixado', kind:'pix', desc:who, color:'#0ea5e9', ico:ICONS.pixBai });
     }
   });
 
@@ -1065,7 +1074,7 @@ function renderEvents(insc, acessosLog, eventosLog){
     if (!a || !a.ts) return;
     const loc = [a.city, a.region].filter(Boolean).join('/') || (a.ip || '—');
     const dev = a.device || 'Desktop';
-    events.push({ ts:a.ts, tit:'Novo acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
+    events.push({ ts:a.ts, tit:'Novo acesso', kind:'acesso', desc:loc + ' • ' + dev, color:'#7c3aed', ico:ICONS.acesso });
   });
 
   // Eventos genéricos (Inscrição iniciada)
@@ -1074,22 +1083,61 @@ function renderEvents(insc, acessosLog, eventosLog){
     if (e.tipo === 'inscricao_iniciada'){
       const loc = [e.city, e.region].filter(Boolean).join('/');
       const who = (e.candidato || 'Candidato') + (loc ? ' • ' + loc : (e.dispositivo ? ' • ' + e.dispositivo : ''));
-      events.push({ ts:e.ts, tit:'Inscrição iniciada', desc:who, color:'#eab308', ico:ICONS.iniciada });
+      events.push({ ts:e.ts, tit:'Inscrição iniciada', kind:'iniciada', desc:who, color:'#eab308', ico:ICONS.iniciada });
     }
   });
 
   // Ordena do mais recente para o mais antigo
   events.sort((a,b)=> (b.ts || '').localeCompare(a.ts || ''));
 
-  if (events.length === 0){
-    evList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;">Aguardando eventos...</div>';
+  // Render dos chips de filtro com contagem por tipo
+  _renderEvFilters(events);
+
+  // Aplica filtro
+  const filtered = (_evFilter === 'all')
+    ? events
+    : events.filter(e => e.kind === _evFilter);
+
+  if (filtered.length === 0){
+    evList.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:13px;">'
+      + (_evFilter === 'all' ? 'Aguardando eventos...' : 'Nenhum evento deste tipo.')
+      + '</div>';
   } else {
-    evList.innerHTML = events.map(e=>(
+    evList.innerHTML = filtered.map(e=>(
       '<div class="ev"><div class="ico" style="background:'+e.color+'">' + e.ico + '</div>'+
       '<div class="ct"><div class="tit">'+escHtml(e.tit)+'</div><div class="desc">'+escHtml(e.desc)+'</div></div>'+
       '<div class="time">'+relTime(e.ts)+'</div></div>'
     )).join('');
   }
+}
+
+function _renderEvFilters(events){
+  const box = document.getElementById('evFilters');
+  if (!box) return;
+  // Conta por tipo
+  const counts = { all: events.length, acesso:0, iniciada:0, enviada:0, pix:0 };
+  events.forEach(e => { counts[e.kind] = (counts[e.kind]||0) + 1; });
+  const chips = [
+    ['all',      'Todos',              '#475569', '#f1f5f9'],
+    ['acesso',   'Novos acessos',      '#fff',    '#7c3aed'],
+    ['iniciada', 'Inscrição iniciada', '#fff',    '#eab308'],
+    ['enviada',  'Inscrição enviada',  '#fff',    '#10b981'],
+    ['pix',      'PIX',                '#fff',    '#f59e0b'],
+  ];
+  box.innerHTML = chips.map(([k, label, fg, bg]) => {
+    const active = _evFilter === k;
+    const style = active
+      ? ('background:'+bg+';color:'+fg+';border-color:'+bg+';')
+      : 'background:#fff;color:#475569;border-color:#e5e7eb;';
+    return '<button data-evf="'+k+'" onclick="_setEvFilter(\''+k+'\')" style="'+style+'border-width:1px;border-style:solid;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">'
+      + escHtml(label)
+      + '<span style="opacity:.85;font-weight:600;">'+counts[k]+'</span></button>';
+  }).join('');
+}
+
+function _setEvFilter(k){
+  _evFilter = k;
+  refreshDashboard();
 }
 
 /* ============ MODAL ACESSOS ============ */
@@ -1160,6 +1208,38 @@ document.getElementById('btnZerar').addEventListener('click', async function(){
   try { if (window.DonasAPI) await window.DonasAPI.clearEventos(); } catch(_e){}
   reloadAndRefreshDashboard();
 });
+
+// Botão "Resolver" no Top Localizações — reprocessa geo de acessos sem city.
+// Processa em lotes de 200 (no backend) e mostra progresso.
+(function(){
+  const btn = document.getElementById('btnBackfillGeo');
+  if (!btn) return;
+  btn.addEventListener('click', async function(){
+    const original = btn.innerText;
+    btn.disabled = true;
+    let totalUpdated = 0;
+    let rounds = 0;
+    try {
+      while (rounds < 20) {  // até 4000 acessos (20 lotes de 200)
+        btn.innerText = '⏳ Processando lote ' + (rounds+1) + '...';
+        const r = await fetch('/api/donas/acessos/backfill-geo', { method:'POST' });
+        if (!r.ok) break;
+        const data = await r.json();
+        totalUpdated += (data.updated || 0);
+        rounds++;
+        // se processou < 100 (metade do lote), provavelmente acabou ou está rate-limited
+        if ((data.processed || 0) < 50 && (data.updated || 0) === 0) break;
+        await new Promise(res => setTimeout(res, 300));
+      }
+      btn.innerText = '✅ ' + totalUpdated + ' atualizados';
+      await reloadAndRefreshDashboard();
+    } catch(e) {
+      btn.innerText = '⚠️ Erro';
+    } finally {
+      setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 2500);
+    }
+  });
+})();
 
 /* ============ Auto-refresh ============ */
 async function autoRefreshAtiva(){

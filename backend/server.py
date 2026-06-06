@@ -231,7 +231,23 @@ async def geo_from_ip(ip: str) -> Dict[str, str]:
                 return out
     except Exception:
         pass
-    # Fallback: ipapi.co (timeout ainda menor — 1.5s)
+    # Fallback 1: ip-api.com (free, sem chave, HTTP, mais resiliente em redes restritas)
+    try:
+        async with httpx.AsyncClient(timeout=1.5) as cli:
+            r = await cli.get(f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,query")
+            d = r.json() or {}
+            if d.get("status") == "success" and (d.get("city") or d.get("regionName")):
+                out = {
+                    "ip": d.get("query") or ip,
+                    "city": d.get("city") or "",
+                    "region": d.get("regionName") or "",
+                    "country": d.get("country") or "",
+                }
+                _geo_cache_put(ip, out)
+                return out
+    except Exception:
+        pass
+    # Fallback 2: ipapi.co
     try:
         async with httpx.AsyncClient(timeout=1.5) as cli:
             r = await cli.get(f"https://ipapi.co/{ip}/json/")
@@ -576,6 +592,37 @@ async def list_acessos():
 async def clear_acessos():
     res = await db.donas_acessos.delete_many({})
     return {"deleted": res.deleted_count}
+
+
+@donas.post("/acessos/backfill-geo")
+async def backfill_geo_acessos():
+    """Tenta resolver geo (city/region) para acessos antigos sem cidade.
+    Útil quando o lookup automático em background falhou (rate limit, etc).
+    Processa até 200 por chamada para evitar bloqueios longos."""
+    cursor = db.donas_acessos.find(
+        {"$and": [
+            {"ip": {"$ne": ""}},
+            {"$or": [{"city": ""}, {"city": {"$exists": False}}]}
+        ]},
+        {"_id": 1, "ip": 1}
+    ).limit(200)
+    docs = await cursor.to_list(200)
+    updated = 0
+    for d in docs:
+        ip = d.get("ip") or ""
+        if not ip or ip.startswith("127.") or ip.startswith("10.") or ip.startswith("192.168."):
+            continue
+        geo = await geo_from_ip(ip)
+        if not geo or not (geo.get("city") or geo.get("region")):
+            continue
+        upd = {}
+        if geo.get("city"):    upd["city"] = geo["city"]
+        if geo.get("region"):  upd["region"] = geo["region"]
+        if geo.get("country"): upd["country"] = geo["country"]
+        if upd:
+            await db.donas_acessos.update_one({"_id": d["_id"]}, {"$set": upd})
+            updated += 1
+    return {"processed": len(docs), "updated": updated}
 
 
 # ===================== Eventos genéricos =====================
