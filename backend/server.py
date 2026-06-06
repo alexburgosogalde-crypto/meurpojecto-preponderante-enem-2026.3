@@ -3,7 +3,7 @@ Backend FastAPI para o sistema ENEM 2026 + Painel Donas
 Persistência em MongoDB. Telegram disparado APENAS na criação de inscrição.
 """
 from fastapi import FastAPI, APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -623,6 +623,57 @@ async def backfill_geo_acessos():
             await db.donas_acessos.update_one({"_id": d["_id"]}, {"$set": upd})
             updated += 1
     return {"processed": len(docs), "updated": updated}
+
+
+# Pixel tracker GIF 1x1 transparente — resiliente a ad blockers, CSP, sendBeacon
+# bloqueado, JS desabilitado etc. Basta um <img src=".../pixel.gif"> no HTML.
+_PIXEL_GIF = bytes.fromhex("47494638396101000100800000000000ffffff21f90401000000002c000000000100010000020144003b")
+
+@donas.get("/acessos/pixel.gif")
+async def acesso_pixel(request: Request, p: str = ""):
+    """Tracking pixel via GET — alternativa a sendBeacon/fetch.
+    Param `p` é o path da página (opcional). Não bloqueia, sempre retorna 200 + GIF."""
+    try:
+        ip = client_ip(request)
+        ua = request.headers.get("user-agent", "")
+        # Dedupe leve: se mesmo IP+UA bateu nos últimos 30s, ignora (browser pode pre-fetch a imagem)
+        from time import time as _t
+        cache_key = f"{ip}|{ua[:80]}"
+        now = _t()
+        recent = _PIXEL_DEDUPE.get(cache_key)
+        if recent and (now - recent) < 30:
+            return Response(content=_PIXEL_GIF, media_type="image/gif",
+                            headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"})
+        _PIXEL_DEDUPE[cache_key] = now
+        # Limpa cache antigo periodicamente
+        if len(_PIXEL_DEDUPE) > 5000:
+            for k in [k for k,v in _PIXEL_DEDUPE.items() if (now - v) > 60]:
+                _PIXEL_DEDUPE.pop(k, None)
+
+        geo = _GEO_CACHE.get(ip, {})
+        doc_id = str(uuid.uuid4())
+        doc = {
+            "_id": doc_id,
+            "ts": now_iso(),
+            "ip": geo.get("ip") or ip,
+            "city": geo.get("city") or "",
+            "region": geo.get("region") or "",
+            "country": geo.get("country") or "",
+            "device": device_from_ua(ua),
+            "ua": ua[:200],
+            "path": (p or "/")[:200],
+            "source": "pixel",
+        }
+        await db.donas_acessos.insert_one(doc)
+        if not geo:
+            schedule_geo("donas_acessos", doc_id, ip)
+    except Exception as e:
+        logger.exception("pixel tracker fail: %s", e)
+    return Response(content=_PIXEL_GIF, media_type="image/gif",
+                    headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"})
+
+
+_PIXEL_DEDUPE: Dict[str, float] = {}
 
 
 # ===================== Eventos genéricos =====================

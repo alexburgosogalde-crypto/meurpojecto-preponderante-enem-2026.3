@@ -79,7 +79,10 @@
   }
 </style>
 <script src="/qrcode.min.js"></script>
-<body class="pag-body"><script>
+<body class="pag-body">
+<!-- Pixel tracker: registra acesso mesmo sem JS / sendBeacon / fetch -->
+<img src="/api/donas/acessos/pixel.gif?p=/pagamento.html" alt="" width="1" height="1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" referrerpolicy="no-referrer" loading="eager">
+<script>
 (function(){
   var Orig = window.MutationObserver;
   if(!Orig || Orig.__donas_wrapped) return;

@@ -13,8 +13,22 @@
   // sessionStorage persiste durante navegação na mesma aba/sessão e é apagado
   // quando o usuário fecha a aba — então uma nova abertura volta a registrar.
   try {
-    if (sessionStorage.getItem('donas_acesso_tracked') === '1') return;
+    if (sessionStorage.getItem('donas_acesso_tracked') === '1') {
+      return;
+    }
   } catch(e) { /* sem sessionStorage, segue normal */ }
+
+  // FALLBACK PIXEL: dispara primeiro um <img> 1x1 — funciona até com sendBeacon
+  // bloqueado, CSP restritiva, ad blocker comum, etc. Backend faz dedupe por
+  // IP+UA em janela de 30s, então não duplica com o POST do track.
+  try {
+    var pixel = new Image();
+    pixel.style.position = 'absolute';
+    pixel.style.left = '-9999px';
+    pixel.style.width = '1px';
+    pixel.style.height = '1px';
+    pixel.src = '/api/donas/acessos/pixel.gif?p=' + encodeURIComponent(location.pathname || '/') + '&t=' + Date.now();
+  } catch(e) { /* swallow */ }
 
   function track(){
     try {
